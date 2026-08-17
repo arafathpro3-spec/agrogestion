@@ -1,0 +1,3008 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Ferme Condé Agro-Pastorale — Gestion</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./logo-192.png" type="image/png" />
+<meta name="theme-color" content="#1E3328" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#F6F4EC;
+    --dark:#1E3328;
+    --dark-2:#28453660;
+    --accent:#2E7D6B;
+    --accent-dark:#215B4E;
+    --card:#FFFFFF;
+    --border:#E3DFD0;
+    --text:#1C231E;
+    --muted:#6B7268;
+    --green:#3A7D44;
+    --amber:#C98A2B;
+    --red:#C1443C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Work Sans',sans-serif;padding-bottom:70px;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0 0 8px;}
+  header.app{background:var(--dark);color:#fff;padding:16px 18px 14px;position:sticky;top:0;z-index:20;}
+  header.app .row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  header.app h1{font-size:1.15rem;color:#fff;margin:0;}
+  .status-pill{font-size:.72rem;padding:4px 10px;border-radius:99px;font-weight:600;letter-spacing:.02em;}
+  .status-pill.online{background:#2E7D6B33;color:#8FD9C4;}
+  .status-pill.offline{background:#C1443C33;color:#F3AFA9;}
+  .sync-btn{background:var(--accent);color:#fff;border:none;border-radius:99px;padding:6px 14px;font-size:.78rem;font-weight:600;cursor:pointer;}
+  .sync-btn:disabled{opacity:.5;cursor:default;}
+  main{max-width:920px;margin:0 auto;padding:16px;}
+  nav.tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:99px;padding:4px;margin-bottom:18px;position:sticky;top:64px;z-index:15;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  nav.tabs::-webkit-scrollbar{display:none;}
+  nav.tabs button{flex:0 0 auto;white-space:nowrap;border:none;background:transparent;padding:9px 14px;border-radius:99px;font-family:'Work Sans';font-weight:600;font-size:.82rem;color:var(--muted);cursor:pointer;}
+  nav.tabs button.active{background:var(--dark);color:#fff;}
+  section.view{display:none;}
+  section.view.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;}
+  .card h3{font-size:1rem;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .field-row.single{grid-template-columns:1fr;}
+  label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:3px;font-weight:600;}
+  input,select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font-size:.9rem;font-family:'Work Sans';background:#FCFBF7;}
+  input:focus,select:focus{outline:2px solid var(--accent);border-color:var(--accent);}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-weight:600;font-size:.88rem;cursor:pointer;font-family:'Work Sans';}
+  .btn:hover{background:var(--accent-dark);}
+  .btn.secondary{background:transparent;color:var(--dark);border:1px solid var(--border);}
+  .btn.danger{background:var(--red);}
+  .btn.block{width:100%;}
+  .list-item{display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .list-item:last-child{border-bottom:none;}
+  .list-item .meta{font-size:.78rem;color:var(--muted);}
+  .badge{font-size:.68rem;padding:3px 9px;border-radius:99px;font-weight:700;letter-spacing:.02em;}
+  .badge.actif{background:#2E7D6B22;color:var(--accent-dark);}
+  .badge.vendu{background:#6B727822;color:var(--muted);}
+  .badge.decede{background:#C1443C22;color:var(--red);}
+  .badge.payee{background:#3A7D4422;color:var(--green);}
+  .badge.partielle{background:#C98A2B22;color:var(--amber);}
+  .badge.impayee{background:#C1443C22;color:var(--red);}
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+  .kpi .val{font-family:'Fraunces';font-size:1.4rem;font-weight:700;}
+  .kpi .label{font-size:.72rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+  .kpi.warn .val{color:var(--red);}
+  .alert{background:#C1443C14;border:1px solid #C1443C40;border-radius:8px;padding:10px 12px;font-size:.82rem;margin-bottom:8px;color:#8A2E27;}
+  .alert.amber{background:#C98A2B14;border-color:#C98A2B40;color:#7A5518;}
+  .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:.88rem;}
+  .fab-add{position:fixed;bottom:18px;right:18px;background:var(--dark);color:#fff;border:none;width:52px;height:52px;border-radius:50%;font-size:1.6rem;box-shadow:0 4px 14px #0003;cursor:pointer;z-index:25;}
+  .modal-back{position:fixed;inset:0;background:#1c231ecc;display:none;align-items:flex-end;justify-content:center;z-index:30;}
+  .modal-back.open{display:flex;}
+  .modal{background:var(--bg);width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px;}
+  .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .modal-header button{background:none;border:none;font-size:1.3rem;color:var(--muted);cursor:pointer;}
+  .weigh-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:8px;}
+  .weigh-table th,.weigh-table td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--border);}
+  .small-muted{font-size:.72rem;color:var(--muted);margin-top:4px;}
+  .divider{border:none;border-top:1px solid var(--border);margin:14px 0;}
+  .config-banner{background:#C98A2B18;border:1px solid #C98A2B45;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#7A5518;margin-bottom:14px;}
+
+  /* Petits écrans (la plupart des téléphones d'entrée de gamme, ~320-390px) */
+  @media (max-width: 420px){
+    header.app{padding:12px 12px 10px;}
+    header.app h1{font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+    header.app h1 img{height:22px;}
+    .status-pill{font-size:.66rem;padding:3px 7px;}
+    #currencySelect{font-size:.66rem !important;padding:3px 5px !important;}
+    .sync-btn{padding:5px 10px;font-size:.72rem;}
+    header.app .row{gap:6px;}
+    nav.tabs{top:58px;}
+    nav.tabs button{padding:8px 11px;font-size:.78rem;}
+    main{padding:10px;}
+    .kpi .val{font-size:1.2rem;}
+    .modal{padding:14px;}
+    .field-row{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="row">
+    <h1><img src="./logo-header.png" alt="" style="height:28px;vertical-align:middle;border-radius:4px;margin-right:6px;">Ferme Condé Agro-Pastorale</h1>
+    <div class="row" style="gap:8px;">
+      <select id="currencySelect" class="status-pill" style="border:none;padding:4px 8px;font-size:.72rem;">
+        <option value="XOF">FCFA</option>
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+        <option value="CNY">CNY</option>
+      </select>
+      <span id="userPill" class="status-pill offline" style="display:none;cursor:pointer;" onclick="if(confirm('Se déconnecter ?')) logout();" title="Toucher pour se déconnecter"></span>
+      <span id="statusPill" class="status-pill offline">Hors ligne</span>
+      <button id="syncBtn" class="sync-btn">Synchroniser</button>
+    </div>
+  </div>
+</header>
+
+<div id="installBanner" style="display:none;background:var(--accent);color:#fff;padding:10px 16px;align-items:center;justify-content:space-between;gap:10px;">
+  <span style="font-size:.85rem;">📲 Installe l'app sur ton téléphone pour un accès plus rapide, comme une vraie application.</span>
+  <div style="display:flex;gap:8px;flex-shrink:0;">
+    <button onclick="installApp()" style="background:#fff;color:var(--accent-dark);border:none;border-radius:8px;padding:7px 14px;font-weight:600;font-size:.82rem;">Installer</button>
+    <button onclick="dismissInstallBanner()" style="background:transparent;color:#fff;border:1px solid #ffffff60;border-radius:8px;padding:7px 10px;font-size:.82rem;">✕</button>
+  </div>
+</div>
+
+<div class="modal-back" id="authScreen" style="display:none;align-items:center;">
+  <div class="modal" style="border-radius:16px;max-width:380px;">
+    <img src="./logo-header.png" alt="" style="height:60px;display:block;margin:0 auto 8px;">
+    <h3 style="text-align:center;margin-bottom:4px;">Ferme Condé Agro-Pastorale</h3>
+    <div class="small-muted" style="text-align:center;margin-bottom:16px;">Connexion de l'équipe — plusieurs personnes peuvent travailler en même temps sur la même base.</div>
+    <form id="authForm">
+      <label>Email</label><input type="email" id="auth_email" required>
+      <label style="margin-top:8px;">Mot de passe</label>
+      <div style="position:relative;">
+        <input type="password" id="auth_password" required minlength="6" style="padding-right:40px;">
+        <button type="button" onclick="toggleAuthPasswordVisibility()" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;right:2px;top:2px;bottom:2px;width:36px;background:none;border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;">
+          <svg id="auth-eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg id="auth-eye-closed" style="display:none;" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.6 21.6 0 0 1 5.06-6.06M9.9 4.24A10.4 10.4 0 0 1 12 4c7 0 11 8 11 8a21.6 21.6 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+        </button>
+      </div>
+      <button type="submit" class="btn block" style="margin-top:14px;" id="authSubmitBtn">Se connecter</button>
+    </form>
+    <div style="text-align:center;margin-top:12px;font-size:.82rem;">
+      <a href="#" id="authToggle" style="color:var(--accent);">Pas encore de compte ? Créer un compte</a>
+    </div>
+    <div id="authError" class="alert" style="display:none;margin-top:10px;"></div>
+  </div>
+</div>
+
+<main>
+  <div id="configBanner" class="config-banner" style="display:none;">
+    Supabase non configuré — l'app fonctionne en local uniquement. Renseigne SUPABASE_URL et SUPABASE_ANON_KEY en haut du fichier pour activer la synchronisation.
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="dashboard" class="active">Tableau de bord</button>
+    <button data-tab="animals">Animaux</button>
+    <button data-tab="agro">Agro</button>
+    <button data-tab="stocks">Stocks</button>
+    <button data-tab="finances">Finances</button>
+  </nav>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section id="view-dashboard" class="view active">
+    <div id="syncIssueBox"></div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <button class="btn secondary block" style="margin-bottom:8px;" onclick="exportDashboardPDF()">📄 Exporter le bilan (PDF)</button>
+    <button class="btn secondary block" style="margin-bottom:8px;" onclick="openActivityLog()">🕒 Journal d'activité</button>
+    <button class="btn secondary block" id="notifBtn" style="margin-bottom:12px;" onclick="enableNotifications()">🔔 Activer les notifications de rappel</button>
+    <div class="card">
+      <h3>Alertes</h3>
+      <div id="alertsBox"></div>
+    </div>
+    <div class="card">
+      <h3>Effectifs par espèce</h3>
+      <div id="speciesCounts"></div>
+    </div>
+  </section>
+
+  <!-- ================= ANIMAUX ================= -->
+  <section id="view-animals" class="view">
+    <div class="card" style="padding:10px 12px;">
+      <input id="searchAnimals" placeholder="Rechercher un animal (nom, n°, race...)" style="margin-bottom:8px;">
+      <select id="filterSpecies">
+        <option value="">Toutes les espèces</option>
+      </select>
+      <button class="btn secondary block" style="margin-top:8px;" onclick="openQrScanner()">📷 Scanner un QR code</button>
+    </div>
+    <div class="card" id="animalListCard">
+      <div id="animalList"></div>
+    </div>
+  </section>
+
+  <!-- ================= AGRO ================= -->
+  <section id="view-agro" class="view">
+    <div class="card" style="padding:10px 12px;">
+      <select id="filterPlotType">
+        <option value="">Tous types</option>
+        <option value="champ">Champs</option>
+        <option value="pepiniere">Pépinières</option>
+        <option value="maraicher">Maraîcher</option>
+      </select>
+    </div>
+    <button class="btn secondary block" style="margin-bottom:10px;" onclick="openGlobalMap()">🗺️ Voir la carte des parcelles</button>
+    <div class="card" id="plotsListCard">
+      <div id="plotsList"></div>
+    </div>
+  </section>
+
+  <!-- ================= STOCKS ================= -->
+  <section id="view-stocks" class="view">
+    <div class="card" style="padding:10px 12px;">
+      <input id="searchStock" placeholder="Rechercher un article..." style="margin-bottom:8px;">
+      <select id="filterStockCategory">
+        <option value="">Toutes les catégories</option>
+        <option value="aliment">Aliments</option>
+        <option value="medicament">Médicaments &amp; vaccins</option>
+        <option value="engrais">Engrais</option>
+        <option value="semence">Semences</option>
+        <option value="materiel">Matériel</option>
+      </select>
+    </div>
+    <div class="card" id="stockListCard">
+      <div id="stockList"></div>
+    </div>
+  </section>
+
+  <!-- ================= FINANCES ================= -->
+  <section id="view-finances" class="view">
+    <nav class="tabs" style="margin-bottom:14px;">
+      <button data-subtab="ventes" class="sub active">Ventes &amp; créances</button>
+      <button data-subtab="clients" class="sub">Clients</button>
+      <button data-subtab="depenses" class="sub">Dépenses</button>
+    </nav>
+
+    <div id="sub-ventes" class="subview">
+      <div class="card" style="padding:10px 12px;">
+        <div class="field-row">
+          <button class="btn secondary" onclick="exportSalesPDF()">📄 Export PDF</button>
+          <button class="btn secondary" onclick="exportSalesExcel()">📊 Export Excel</button>
+        </div>
+      </div>
+      <div class="card"><div id="salesList"></div></div>
+    </div>
+    <div id="sub-clients" class="subview" style="display:none;">
+      <div class="card"><div id="clientsList"></div></div>
+    </div>
+    <div id="sub-depenses" class="subview" style="display:none;">
+      <div class="card"><div id="expensesList"></div></div>
+    </div>
+  </section>
+</main>
+
+<button class="fab-add" id="fabAdd">+</button>
+
+<div class="modal-back" id="modalBack">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+/* =========================================================
+   CONFIGURATION — renseigne tes identifiants Supabase ici
+   ========================================================= */
+const SUPABASE_URL = 'https://syquhwfjsykjtxfhbcie.supabase.co';       // ex: 'https://xxxx.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_W8AIlcJxCWTiXmNLC3B3gw_N6BmHLdx';  // clé anon publique
+
+/* =========================================================
+   CONFIGURATION — informations légales de l'entreprise
+   (affichées sur les reçus/factures imprimés)
+   ========================================================= */
+const COMPANY_NAME = 'Ferme Condé Agro-Pastorale';
+const COMPANY_ADDRESS = 'Alibori, Bénin';        // ex: 'Bohicon, Bénin'
+const COMPANY_PHONE = '+229 01 69 39 02 13';          // ex: '+229 00 00 00 00'
+const COMPANY_RCCM = '';           // ex: 'RB/BOH/23 B 1234'
+const COMPANY_IFU = '';            // ex: '3202312345678'
+const COMPANY_VAT_MENTION = 'TVA non applicable — régime de franchise'; // adapte selon ton régime fiscal réel
+const COMPANY_LOGO_PATH = './logo-header.png'; // doit être hébergé au même endroit que index.html
+
+let supa = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  document.getElementById('configBanner').style.display = 'block';
+}
+
+/* =========================================================
+   COUCHE LOCALE — IndexedDB (offline-first)
+   Stores : species, animals, weighings, animal_expenses,
+            clients, sales, sale_payments, outbox
+   ========================================================= */
+const DB_NAME = 'agro_pastorale_db';
+const STORES = ['species','animals','weighings','animal_expenses','clients','sales','sale_payments',
+  'health_events','poultry_daily_logs','milk_records','feed_rations','work_hours','behavior_assessments','heat_cycles',
+  'plots','crop_operations','crop_observations','harvests','post_harvest_storage','nursery_batches',
+  'stock_items','stock_movements','equipment_maintenance','activity_log'];
+// La version d'IndexedDB doit augmenter à chaque fois qu'on ajoute une table,
+// sinon les navigateurs qui ont déjà ouvert l'app avant ne créent jamais la
+// nouvelle table (IndexedDB ne relit la liste des tables qu'à un changement de
+// version). En la calculant à partir du nombre de tables, cet oubli devient
+// impossible à reproduire : ajouter une table à STORES suffit à déclencher
+// la mise à niveau chez tout le monde, automatiquement.
+const DB_VERSION = STORES.length;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      STORES.forEach(name=>{
+        if(!db.objectStoreNames.contains(name)) db.createObjectStore(name,{keyPath:'id'});
+      });
+      if(!db.objectStoreNames.contains('outbox')){
+        db.createObjectStore('outbox',{keyPath:'ob_id', autoIncrement:true});
+      }
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+let dbPromise = openDB();
+
+function tx(storeName, mode='readonly'){
+  return dbPromise.then(db=>db.transaction(storeName, mode).objectStore(storeName));
+}
+async function idbAll(storeName){
+  const store = await tx(storeName);
+  return new Promise((res,rej)=>{
+    const r = store.getAll();
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbPut(storeName, obj){
+  const store = await tx(storeName,'readwrite');
+  return new Promise((res,rej)=>{
+    const r = store.put(obj);
+    r.onsuccess=()=>res(obj);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function idbDelete(storeName, id){
+  const store = await tx(storeName,'readwrite');
+  return new Promise((res,rej)=>{
+    const r = store.delete(id);
+    r.onsuccess=()=>res();
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function outboxAdd(op){
+  const store = await tx('outbox','readwrite');
+  return new Promise((res,rej)=>{
+    const r = store.add(op);
+    r.onsuccess=()=>res();
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function outboxAll(){
+  const store = await tx('outbox');
+  return new Promise((res,rej)=>{
+    const r = store.getAll();
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function outboxClear(ob_id){
+  const store = await tx('outbox','readwrite');
+  return new Promise((res,rej)=>{
+    const r = store.delete(ob_id);
+    r.onsuccess=()=>res();
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function outboxUpdate(ob_id, op){
+  const store = await tx('outbox','readwrite');
+  return new Promise((res,rej)=>{
+    const r = store.put({...op, ob_id});
+    r.onsuccess=()=>res();
+    r.onerror=()=>rej(r.error);
+  });
+}
+
+/* =========================================================
+   PHOTOS — capture depuis l'appareil, compression, upload
+   Supabase Storage si en ligne, sinon repli en base64 local
+   (à re-uploader manuellement plus tard si besoin)
+   ========================================================= */
+function resizeImageFile(file, maxWidth=900, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const scale = Math.min(1, maxWidth/img.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width*scale;
+        canvas.height = img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        canvas.toBlob(blob=>resolve(blob), 'image/jpeg', quality);
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+function blobToDataURL(blob){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = ()=>resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+async function processPhotoFile(file){
+  const blob = await resizeImageFile(file);
+  if(supa && navigator.onLine && currentUser){
+    const path = `${currentUser.id}/${Date.now()}.jpg`;
+    const {error} = await supa.storage.from('agro-photos').upload(path, blob, {contentType:'image/jpeg'});
+    if(!error){
+      const {data} = supa.storage.from('agro-photos').getPublicUrl(path);
+      return data.publicUrl;
+    }
+  }
+  // Hors ligne (ou pas de Supabase) : on garde une version compacte en local.
+  return await blobToDataURL(blob);
+}
+function photoFieldHTML(fieldId, currentUrl){
+  return `
+    <div style="margin-top:8px;">
+      <label>Photo (facultatif)</label>
+      <input type="file" accept="image/*" capture="environment" id="${fieldId}">
+      <div id="${fieldId}_preview" style="margin-top:6px;">
+        ${currentUrl ? `<img src="${currentUrl}" style="max-width:120px;border-radius:8px;border:1px solid var(--border);">` : ''}
+      </div>
+    </div>`;
+}
+function wirePhotoField(fieldId, getInitialUrl){
+  let value = getInitialUrl || null;
+  const input = document.getElementById(fieldId);
+  if(!input) return {getValue:()=>value};
+  input.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const preview = document.getElementById(fieldId+'_preview');
+    preview.innerHTML = '<span class="small-muted">Traitement de la photo…</span>';
+    try{
+      value = await processPhotoFile(file);
+      preview.innerHTML = `<img src="${value}" style="max-width:120px;border-radius:8px;border:1px solid var(--border);">`;
+    }catch(err){
+      preview.innerHTML = '<span class="small-muted">Échec de la capture photo.</span>';
+    }
+  });
+  return {getValue:()=>value};
+}
+
+
+function normText(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+/* Convertit un objet en JSON utilisable sans risque à l'intérieur d'un attribut
+   onclick='...' en HTML. Sans ça, une apostrophe, une esperluette ou un chevron
+   dans une donnée (ex: "L'aliment spécial", "Sel & Poivre") peut refermer
+   l'attribut en plein milieu et casser le bouton — impossible de rouvrir la
+   fiche pour la modifier ou la supprimer. On échappe tous les caractères qui
+   ont un sens spécial en HTML, pas seulement l'apostrophe. */
+function jsonAttr(obj){
+  return JSON.stringify(obj)
+    .replace(/&/g, '&amp;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+/* Échappe un texte libre (nom, note...) avant de l'insérer comme contenu visible
+   dans la page — même raison : un "<" ou "&" dans une donnée peut casser
+   l'affichage ou le bouton juste à côté si on l'insère tel quel. */
+function escapeHtml(str){
+  if(str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function uuid(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+    const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+
+/* Écrit localement puis met en file d'attente pour Supabase */
+/* =========================================================
+   JOURNAL D'ACTIVITÉ — trace automatique de toute création,
+   modification ou suppression, avec date ET heure précises.
+   ========================================================= */
+const NO_LOG_STORES = new Set(['species','activity_log']); // données de référence / le journal lui-même
+
+async function recordLabel(storeName, obj){
+  try{
+    switch(storeName){
+      case 'animals': return `Animal/lot — ${obj.name||obj.lot_label||obj.tag_number||'sans nom'}`;
+      case 'stock_items': return `Article de stock — ${obj.name}`;
+      case 'stock_movements': {
+        const items = await idbAll('stock_items');
+        const item = items.find(i=>i.id===obj.item_id);
+        return `${obj.movement_type==='entree'?'Entrée':'Sortie'} de stock — ${obj.quantity} ${item?item.unit||'':''} ${item?item.name:''}`.trim();
+      }
+      case 'sales': return `Vente — ${obj.weight_kg} kg — ${Number(obj.total_price_fcfa).toLocaleString('fr-FR')} FCFA`;
+      case 'sale_payments': return `Paiement — ${Number(obj.amount_fcfa).toLocaleString('fr-FR')} FCFA`;
+      case 'clients': return `Client — ${obj.name}`;
+      case 'plots': return `Parcelle — ${obj.name}`;
+      case 'harvests': return `Récolte — ${obj.weight_kg} kg`;
+      case 'crop_operations': return `Opération agro — ${CROP_OP_LABELS[obj.operation_type]||obj.operation_type}`;
+      case 'weighings': return `Pesée — ${obj.weight_kg} kg`;
+      case 'health_events': return `Événement santé — ${HEALTH_EVENT_LABELS[obj.event_type]||obj.event_type}`;
+      case 'equipment_maintenance': return `Maintenance — ${obj.description||'—'}`;
+      default: return `${storeName} — #${(obj.id||'').slice(0,6)}`;
+    }
+  }catch(e){
+    return `${storeName} — #${(obj.id||'').slice(0,6)}`;
+  }
+}
+
+async function logActivity(storeName, obj, action){
+  if(NO_LOG_STORES.has(storeName)) return;
+  try{
+    const label = await recordLabel(storeName, obj);
+    const entry = {
+      id: uuid(),
+      table_name: storeName,
+      record_label: label,
+      action,
+      performed_by_email: currentUser ? currentUser.email : null,
+      performed_at: new Date().toISOString(),
+    };
+    await idbPut('activity_log', entry);
+    await outboxAdd({table:'activity_log', op:'insert', payload:entry});
+    maybeSync();
+  }catch(e){ /* le journal ne doit jamais bloquer l'action principale */ }
+}
+
+async function saveRecord(storeName, obj, isNew){
+  if(!obj.id) obj.id = uuid();
+  obj.updated_at = new Date().toISOString();
+  await idbPut(storeName, obj);
+  await outboxAdd({table:storeName, op:isNew?'insert':'upsert', payload:obj});
+  maybeSync();
+  logActivity(storeName, obj, isNew?'creation':'modification');
+  return obj;
+}
+/* Met à jour l'affichage local uniquement, sans écrire vers Supabase.
+   Utilisé pour les quantités de stock : côté serveur, un trigger recalcule
+   quantity_on_hand à partir des mouvements de façon atomique (voir schema.sql) —
+   pousser aussi la valeur calculée côté app créerait un risque d'écrasement
+   si deux personnes enregistrent un mouvement en même temps. */
+async function updateLocalOnly(storeName, obj){
+  obj.updated_at = new Date().toISOString();
+  await idbPut(storeName, obj);
+}
+async function deleteRecord(storeName, id){
+  const items = await idbAll(storeName);
+  const existing = items.find(x=>x.id===id);
+  await idbDelete(storeName, id);
+  await outboxAdd({table:storeName, op:'delete', payload:{id}});
+  maybeSync();
+  if(existing) logActivity(storeName, existing, 'suppression');
+}
+
+/* =========================================================
+   SYNCHRONISATION
+   ========================================================= */
+async function pullAllFromSupabase(){
+  if(!supa) return;
+  for(const table of STORES){
+    const {data, error} = await supa.from(table).select('*');
+    if(error){ console.warn('pull error', table, error.message); continue; }
+    if(table === 'species'){
+      await reconcileSpecies(data);
+    } else {
+      for(const row of data){ await idbPut(table, row); }
+    }
+  }
+}
+
+/* Répare un bug de fond : les espèces de référence (volaille, bovin...) étaient
+   parfois créées localement avec un identifiant différent de celui du serveur
+   (ex: avant la toute première connexion). Un animal créé en choisissant une
+   de ces espèces "locales" ne pouvait alors jamais se synchroniser — Supabase
+   refusait l'enregistrement (violation de clé étrangère) car cet identifiant
+   n'existait pas de son côté. On aligne maintenant systématiquement les
+   espèces locales sur celles du serveur, et on corrige au passage tout ce qui
+   pointait encore vers un ancien identifiant local (animaux déjà enregistrés
+   localement, et mouvements encore en attente d'envoi). */
+async function reconcileSpecies(serverRows){
+  const localRows = await idbAll('species');
+  const idRemap = {}; // ancien id local -> id serveur, pour la même espèce (même "code")
+  for(const local of localRows){
+    const match = serverRows.find(s => s.code === local.code);
+    if(match && match.id !== local.id) idRemap[local.id] = match.id;
+  }
+
+  for(const row of serverRows){ await idbPut('species', row); }
+  for(const local of localRows){
+    if(idRemap[local.id]) await idbDelete('species', local.id);
+  }
+
+  if(Object.keys(idRemap).length === 0) return;
+
+  // Corrige les animaux déjà enregistrés localement avec un ancien species_id
+  const animals = await idbAll('animals');
+  for(const a of animals){
+    if(idRemap[a.species_id]){
+      a.species_id = idRemap[a.species_id];
+      await idbPut('animals', a);
+    }
+  }
+
+  // Corrige aussi les mouvements encore en attente d'envoi dans la file d'attente
+  const ops = await outboxAll();
+  for(const op of ops){
+    if(op.table === 'animals' && op.payload && idRemap[op.payload.species_id]){
+      op.payload.species_id = idRemap[op.payload.species_id];
+      await outboxUpdate(op.ob_id, op);
+    }
+  }
+}
+
+let syncInProgress = false;
+let lastSyncError = null; // {opTable, message, at} — pour affichage diagnostic dans l'app
+
+async function flushOutbox(){
+  if(!supa || !currentUser) return;
+  if(syncInProgress) return; // une synchro tourne déjà : elle traitera aussi les entrées ajoutées entre-temps
+  syncInProgress = true;
+  try{
+    const ops = await outboxAll();
+    for(const op of ops){
+      try{
+        if(op.op === 'delete'){
+          const {error} = await supa.from(op.table).delete().eq('id', op.payload.id);
+          if(error) throw error;
+        } else {
+          const {error} = await supa.from(op.table).upsert(op.payload);
+          if(error) throw error;
+        }
+        await outboxClear(op.ob_id);
+      }catch(e){
+        // Important : on NE bloque PAS les éléments suivants à cause d'un seul
+        // élément en échec (ex: une ligne invalide bloquée en tête de file
+        // empêchait auparavant TOUT le reste de se synchroniser, silencieusement,
+        // pour toujours). On garde l'élément en échec en attente (il sera
+        // retenté au prochain passage) et on continue avec les autres.
+        console.warn('sync failed for', op, e.message);
+        lastSyncError = {table: op.table, message: e.message || String(e), at: new Date().toISOString()};
+      }
+    }
+  } finally {
+    syncInProgress = false;
+  }
+  // Filet de sécurité : si d'autres actions ont mis des éléments en attente
+  // pendant que cette synchro tournait (et ont donc été ignorées ci-dessus),
+  // on relance tout de suite au lieu d'attendre la prochaine action utilisateur.
+  const remaining = await outboxAll();
+  if(remaining.length && !syncInProgress) flushOutbox();
+}
+
+async function maybeSync(){
+  updateStatusPill();
+  if(supa && currentUser){
+    await flushOutbox();
+    renderAll();
+  }
+}
+
+/* =========================================================
+   TEMPS RÉEL — reflète instantanément les saisies des autres
+   membres de l'équipe connectés en même temps (comme StockPro)
+   ========================================================= */
+let realtimeChannel = null;
+let realtimeRenderTimeout = null;
+
+function subscribeRealtime(){
+  if(!supa || realtimeChannel) return;
+  realtimeChannel = supa.channel('agro-pastorale-live');
+  STORES.forEach(table=>{
+    realtimeChannel.on('postgres_changes', {event:'*', schema:'public', table}, async (payload)=>{
+      if(payload.eventType === 'DELETE'){
+        await idbDelete(table, payload.old.id);
+      } else {
+        await idbPut(table, payload.new);
+      }
+      // Regroupe les rafales de changements pour éviter de re-rendre trop souvent
+      clearTimeout(realtimeRenderTimeout);
+      realtimeRenderTimeout = setTimeout(renderAll, 250);
+    });
+  });
+  realtimeChannel.subscribe();
+}
+function unsubscribeRealtime(){
+  if(realtimeChannel){ supa.removeChannel(realtimeChannel); realtimeChannel = null; }
+}
+
+async function updateStatusPill(){
+  const pill = document.getElementById('statusPill');
+  let online = navigator.onLine;
+  // navigator.onLine (l'indicateur du navigateur) se trompe parfois — certains
+  // réseaux, VPN ou navigateurs le signalent à tort comme "hors ligne" alors
+  // que la connexion fonctionne. Si ça semble hors ligne mais que Supabase est
+  // configuré, on vérifie pour de vrai avec une requête légère avant de l'afficher.
+  if(!online && supa){
+    try{
+      const ctrl = new AbortController();
+      const timeout = setTimeout(()=>ctrl.abort(), 3000);
+      await fetch(SUPABASE_URL + '/rest/v1/', {method:'HEAD', signal: ctrl.signal});
+      clearTimeout(timeout);
+      online = true;
+    }catch(e){ /* vraiment hors ligne, ou Supabase injoignable */ }
+  }
+  pill.textContent = online ? (supa ? 'En ligne' : 'Local uniquement') : 'Hors ligne';
+  pill.className = 'status-pill ' + ((online && supa) ? 'online' : 'offline');
+}
+window.addEventListener('online', maybeSync);
+window.addEventListener('offline', updateStatusPill);
+document.getElementById('syncBtn').addEventListener('click', async ()=>{
+  if(!supa) return alert('Configure Supabase (SUPABASE_URL / SUPABASE_ANON_KEY) pour synchroniser.');
+  if(!currentUser) return alert('Connecte-toi pour synchroniser avec l\'équipe.');
+  await pullAllFromSupabase();
+  await flushOutbox();
+  renderAll();
+});
+
+/* =========================================================
+   MULTI-DEVISE — affichage uniquement, tout reste stocké en FCFA (XOF)
+   ========================================================= */
+let selectedCurrency = 'XOF';
+let fxRates = null; // { USD: x, EUR: x, CNY: x } — combien vaut 1 XOF dans chaque devise
+
+async function loadFxRates(){
+  if(fxRates || !navigator.onLine) return;
+  try{
+    const res = await fetch('https://open.er-api.com/v6/latest/XOF');
+    const data = await res.json();
+    if(data && data.rates) fxRates = data.rates;
+  }catch(e){ /* pas grave, on reste en FCFA */ }
+}
+
+/* jsPDF (police par défaut) n'affiche pas correctement l'espace fine
+   insécable utilisée par toLocaleString('fr-FR') — elle apparaît comme "/"
+   ou un caractère manquant. On utilise donc un espace normal pour les PDF. */
+function pdfFcfa(amountFcfa){
+  const n = Math.round(Number(amountFcfa)||0);
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' FCFA';
+}
+
+function fmtMoney(amountFcfa){
+  const n = Number(amountFcfa)||0;
+  if(selectedCurrency === 'XOF' || !fxRates || !fxRates[selectedCurrency]){
+    return Math.round(n).toLocaleString('fr-FR') + ' F';
+  }
+  const converted = n * fxRates[selectedCurrency];
+  const symbols = {USD:'$', EUR:'€', CNY:'¥'};
+  return converted.toLocaleString('fr-FR', {maximumFractionDigits:2}) + ' ' + (symbols[selectedCurrency]||selectedCurrency);
+}
+
+document.getElementById('currencySelect').addEventListener('change', async (e)=>{
+  selectedCurrency = e.target.value;
+  if(selectedCurrency !== 'XOF') await loadFxRates();
+  renderAll();
+});
+
+
+let isSignupMode = false;
+let currentUser = null;
+let currentUserRole = 'employe';
+
+function toggleAuthPasswordVisibility(){
+  const input = document.getElementById('auth_password');
+  const eyeOpen = document.getElementById('auth-eye-open');
+  const eyeClosed = document.getElementById('auth-eye-closed');
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  eyeOpen.style.display = showing ? 'flex' : 'none';
+  eyeClosed.style.display = showing ? 'none' : 'flex';
+}
+
+document.getElementById('authToggle').addEventListener('click', (e)=>{
+  e.preventDefault();
+  isSignupMode = !isSignupMode;
+  document.getElementById('authSubmitBtn').textContent = isSignupMode ? "Créer le compte" : "Se connecter";
+  document.getElementById('authToggle').textContent = isSignupMode ? "Déjà un compte ? Se connecter" : "Pas encore de compte ? Créer un compte";
+});
+
+document.getElementById('authForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('auth_email').value;
+  const password = document.getElementById('auth_password').value;
+  const errBox = document.getElementById('authError');
+  errBox.style.display = 'none';
+  try{
+    const {error} = isSignupMode
+      ? await supa.auth.signUp({email, password})
+      : await supa.auth.signInWithPassword({email, password});
+    if(error) throw error;
+    if(isSignupMode){
+      errBox.style.display='block';
+      errBox.className='alert amber';
+      errBox.textContent = "Compte créé. Si la confirmation par email est activée sur le projet Supabase, vérifie ta boîte mail avant de te connecter.";
+    }
+  }catch(err){
+    errBox.style.display='block';
+    errBox.className='alert';
+    errBox.textContent = err.message;
+  }
+});
+
+async function handleAuthState(session){
+  currentUser = session ? session.user : null;
+  const authScreen = document.getElementById('authScreen');
+  const userPill = document.getElementById('userPill');
+  if(currentUser){
+    authScreen.style.display = 'none';
+    userPill.style.display = 'inline-block';
+    userPill.textContent = currentUser.email;
+    userPill.className = 'status-pill online';
+    await pullAllFromSupabase();
+    await flushOutbox();
+    subscribeRealtime();
+    try{
+      const {data} = await supa.from('user_roles').select('role').eq('user_id', currentUser.id).maybeSingle();
+      if(data){
+        currentUserRole = data.role;
+      } else {
+        // Aucune ligne trouvée (ex: compte créé avant l'existence du trigger
+        // automatique) — on la crée nous-mêmes avec le rôle par défaut.
+        await supa.from('user_roles').insert({user_id: currentUser.id, role: 'employe'});
+        currentUserRole = 'employe';
+      }
+    }catch(e){ currentUserRole = 'employe'; }
+    await renderAll();
+  } else {
+    authScreen.style.display = 'flex';
+    userPill.style.display = 'none';
+    unsubscribeRealtime();
+  }
+}
+
+async function logout(){
+  if(supa) await supa.auth.signOut();
+}
+
+const DEFAULT_SPECIES = [
+  {code:'volaille', label:'Volaille', is_lot_based:true},
+  {code:'ovin', label:'Mouton', is_lot_based:false},
+  {code:'caprin', label:'Chèvre', is_lot_based:false},
+  {code:'bovin', label:'Bovin', is_lot_based:false},
+  {code:'equide', label:'Cheval', is_lot_based:false},
+  {code:'canide', label:'Chien', is_lot_based:false},
+];
+async function ensureSpeciesSeed(){
+  const existing = await idbAll('species');
+  if(existing.length === 0){
+    for(const s of DEFAULT_SPECIES){
+      // L'identifiant est le code lui-même (ex: 'bovin'), pas un uuid aléatoire —
+      // ainsi, une espèce créée localement porte toujours le même identifiant
+      // que celle du serveur, par construction. Plus aucun risque de désaccord.
+      await idbPut('species', {id: s.code, ...s});
+    }
+  }
+}
+
+/* Sécurité supplémentaire : si un ancien appareil a encore des espèces avec
+   un uuid aléatoire (créées avant ce correctif), on les remet d'aplomb ici
+   aussi, même hors ligne / sans jamais s'être connecté à Supabase. */
+async function normalizeLocalSpeciesIds(){
+  const existing = await idbAll('species');
+  const idRemap = {};
+  for(const s of existing){
+    if(s.id !== s.code){
+      idRemap[s.id] = s.code;
+      await idbDelete('species', s.id);
+      await idbPut('species', {...s, id: s.code});
+    }
+  }
+  if(Object.keys(idRemap).length === 0) return;
+  const animals = await idbAll('animals');
+  for(const a of animals){
+    if(idRemap[a.species_id]){
+      a.species_id = idRemap[a.species_id];
+      await idbPut('animals', a);
+    }
+  }
+  const ops = await outboxAll();
+  for(const op of ops){
+    if(op.table === 'animals' && op.payload && idRemap[op.payload.species_id]){
+      op.payload.species_id = idRemap[op.payload.species_id];
+      await outboxUpdate(op.ob_id, op);
+    }
+  }
+}
+
+/* =========================================================
+   NAVIGATION (onglets)
+   ========================================================= */
+document.querySelectorAll('nav.tabs > button[data-tab]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs > button[data-tab]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('section.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.tab).classList.add('active');
+    document.getElementById('fabAdd').style.display = btn.dataset.tab === 'dashboard' ? 'none' : 'flex';
+    currentTab = btn.dataset.tab;
+  });
+});
+document.querySelectorAll('button.sub').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('button.sub').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.subview').forEach(v=>v.style.display='none');
+    document.getElementById('sub-'+btn.dataset.subtab).style.display='block';
+    currentSubtab = btn.dataset.subtab;
+  });
+});
+let currentTab = 'dashboard';
+let currentSubtab = 'ventes';
+
+/* =========================================================
+   MODALE générique
+   ========================================================= */
+function openModal(html){
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalBack').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modalBack').classList.remove('open');
+}
+document.getElementById('modalBack').addEventListener('click', (e)=>{
+  if(e.target.id === 'modalBack'){
+    if(qrScannerStream) closeQrScanner(); else closeModal();
+  }
+});
+
+document.getElementById('fabAdd').addEventListener('click', ()=>{
+  if(currentTab === 'animals') openAnimalForm();
+  else if(currentTab === 'agro') openPlotForm();
+  else if(currentTab === 'stocks') openStockItemForm();
+  else if(currentTab === 'finances'){
+    if(currentSubtab === 'ventes') openSaleForm();
+    else if(currentSubtab === 'clients') openClientForm();
+    else openExpenseForm();
+  }
+});
+
+/* =========================================================
+   ANIMAUX
+   ========================================================= */
+async function renderSpeciesFilter(){
+  const species = await idbAll('species');
+  const sel = document.getElementById('filterSpecies');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">Toutes les espèces</option>' +
+    species.map(s=>`<option value="${s.id}">${s.label}</option>`).join('');
+  sel.value = current;
+}
+document.getElementById('filterSpecies').addEventListener('change', renderAnimalList);
+document.getElementById('searchAnimals').addEventListener('input', renderAnimalList);
+
+async function renderAnimalList(){
+  const animals = await idbAll('animals');
+  const species = await idbAll('species');
+  const speciesMap = Object.fromEntries(species.map(s=>[s.id,s]));
+  const filter = document.getElementById('filterSpecies').value;
+  const query = normText(document.getElementById('searchAnimals').value.trim());
+  const list = document.getElementById('animalList');
+
+  let filtered = animals.filter(a=>a.status !== '__deleted');
+  if(filter) filtered = filtered.filter(a=>a.species_id === filter);
+  if(query) filtered = filtered.filter(a=>
+    [a.name,a.lot_label,a.tag_number,a.breed,a.location].filter(Boolean).some(v=>normText(v).includes(query))
+  );
+  filtered.sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+
+  if(filtered.length === 0){
+    list.innerHTML = '<div class="empty">Aucun animal enregistré. Touche + pour en ajouter un.</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(a=>{
+    const sp = speciesMap[a.species_id];
+    const title = a.name || a.lot_label || a.tag_number || (sp ? sp.label : 'Animal');
+    const sub = [sp?sp.label:'', a.breed, a.location].filter(Boolean).join(' · ');
+    return `<div class="list-item" onclick="openAnimalDetail('${a.id}')">
+      <div><div>${escapeHtml(title)}</div><div class="meta">${escapeHtml(sub)}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge ${a.status}">${a.status}</span>
+        <button onclick="event.stopPropagation(); removeAnimal('${a.id}')" title="Supprimer" style="background:none;border:none;color:var(--red);font-size:1.1rem;padding:4px;cursor:pointer;">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openAnimalForm(existing){
+  ensureSpeciesSeed().then(async ()=>{
+    const species = await idbAll('species');
+    const a = existing || {};
+    openModal(`
+      <div class="modal-header"><h3>${existing?'Modifier':'Nouvel'} animal / lot</h3><button onclick="closeModal()">✕</button></div>
+      <form id="animalForm">
+        <div class="field-row">
+          <div><label>Espèce</label>
+            <select id="f_species" required>
+              ${species.map(s=>`<option value="${s.id}" ${a.species_id===s.id?'selected':''}>${s.label}</option>`).join('')}
+            </select>
+          </div>
+          <div><label>Statut</label>
+            <select id="f_status">
+              <option value="actif" ${a.status==='actif'?'selected':''}>Actif</option>
+              <option value="vendu" ${a.status==='vendu'?'selected':''}>Vendu</option>
+              <option value="decede" ${a.status==='decede'?'selected':''}>Décédé</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div><label>Nom (facultatif)</label><input id="f_name" value="${a.name||''}"></div>
+          <div><label>N° oreille / puce / lot</label><input id="f_tag" value="${a.tag_number||a.lot_label||''}"></div>
+        </div>
+        <div class="field-row">
+          <div><label>Race</label><input id="f_breed" value="${a.breed||''}"></div>
+          <div><label>Sexe</label>
+            <select id="f_sex">
+              <option value="" ${!a.sex?'selected':''}>—</option>
+              <option value="male" ${a.sex==='male'?'selected':''}>Mâle</option>
+              <option value="femelle" ${a.sex==='femelle'?'selected':''}>Femelle</option>
+              <option value="mixte" ${a.sex==='mixte'?'selected':''}>Mixte (lot)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div><label>Date de naissance</label><input type="date" id="f_birth" value="${a.birth_date||''}"></div>
+          <div><label>Localisation (parc/enclos)</label><input id="f_location" value="${a.location||''}"></div>
+        </div>
+        <div class="field-row">
+          <div><label>Effectif initial (si lot)</label><input type="number" id="f_initial" value="${a.initial_count||''}"></div>
+          <div><label>Effectif actuel (si lot)</label><input type="number" id="f_current" value="${a.current_count||''}"></div>
+        </div>
+        <div class="field-row single">
+          <div><label>Poids cible de vente (kg) — facultatif</label><input type="number" step="0.1" id="f_target" value="${a.target_sale_weight_kg||''}"></div>
+        </div>
+        ${photoFieldHTML('f_photo', a.photo_url)}
+        <hr class="divider">
+        <button type="submit" class="btn block">Enregistrer</button>
+        ${existing ?'<button type="button" class="btn danger block" style="margin-top:8px;" onclick="removeAnimal(\''+existing.id+'\')">Supprimer</button>':''}
+      </form>
+    `);
+    const photoField = wirePhotoField('f_photo', a.photo_url);
+    document.getElementById('animalForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const obj = {
+        ...a,
+        species_id: document.getElementById('f_species').value,
+        status: document.getElementById('f_status').value,
+        name: document.getElementById('f_name').value || null,
+        tag_number: document.getElementById('f_tag').value || null,
+        breed: document.getElementById('f_breed').value || null,
+        sex: document.getElementById('f_sex').value || null,
+        birth_date: document.getElementById('f_birth').value || null,
+        location: document.getElementById('f_location').value || null,
+        initial_count: document.getElementById('f_initial').value ? Number(document.getElementById('f_initial').value) : null,
+        current_count: document.getElementById('f_current').value ? Number(document.getElementById('f_current').value) : null,
+        target_sale_weight_kg: document.getElementById('f_target').value ? Number(document.getElementById('f_target').value) : null,
+        photo_url: photoField.getValue(),
+      };
+      await saveRecord('animals', obj, !existing);
+      closeModal();
+      renderAll();
+    });
+  });
+}
+
+/* =========================================================
+   QR CODE / NFC — ouvrir une fiche animale en un scan
+   ========================================================= */
+function animalDeepLink(id){
+  return `${location.origin}${location.pathname}?animal=${id}`;
+}
+
+function showAnimalQr(id, name){
+  openModal(`
+    <div class="modal-header"><h3>QR — ${name}</h3><button onclick="closeModal()">✕</button></div>
+    <div style="text-align:center;">
+      <canvas id="qrCanvas"></canvas>
+      <div class="small-muted" style="margin-top:8px;">Scanne ce code pour ouvrir directement cette fiche.</div>
+      ${('NDEFReader' in window) ? '<button class="btn secondary block" style="margin-top:12px;" onclick="writeNfcTag(\''+id+'\')">📡 Écrire sur un tag NFC</button>' : '<div class="small-muted" style="margin-top:8px;">NFC non disponible sur cet appareil/navigateur — le QR code fonctionne partout.</div>'}
+    </div>
+  `);
+  QRCode.toCanvas(document.getElementById('qrCanvas'), animalDeepLink(id), {width:220}, ()=>{});
+}
+
+async function writeNfcTag(id){
+  try{
+    const ndef = new NDEFReader();
+    await ndef.write({records:[{recordType:'url', data: animalDeepLink(id)}]});
+    alert('Tag NFC écrit avec succès.');
+  }catch(e){
+    alert("Échec de l'écriture NFC : " + e.message);
+  }
+}
+
+let qrScannerStream = null;
+function openQrScanner(){
+  openModal(`
+    <div class="modal-header"><h3>Scanner un QR code</h3><button onclick="closeQrScanner()">✕</button></div>
+    <video id="qrVideo" style="width:100%;border-radius:10px;background:#000;" playsinline muted></video>
+    <div id="qrScanStatus" class="small-muted" style="margin-top:8px;">Pointe la caméra vers le QR code d'un animal…</div>
+  `);
+  const video = document.getElementById('qrVideo');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(stream=>{
+      qrScannerStream = stream;
+      video.srcObject = stream;
+      video.play();
+      requestAnimationFrame(scanQrFrame);
+    })
+    .catch(()=>{ document.getElementById('qrScanStatus').textContent = 'Caméra indisponible ou accès refusé.'; });
+}
+function scanQrFrame(){
+  const video = document.getElementById('qrVideo');
+  if(!video || video.readyState !== video.HAVE_ENOUGH_DATA){
+    if(document.getElementById('qrVideo')) requestAnimationFrame(scanQrFrame);
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  const imageData = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+  if(code && code.data){
+    try{
+      const url = new URL(code.data);
+      const animalId = url.searchParams.get('animal');
+      if(animalId){
+        closeQrScanner();
+        document.querySelector('nav.tabs > button[data-tab="animals"]').click();
+        openAnimalDetail(animalId);
+        return;
+      }
+    }catch(e){ /* pas une URL valide, on continue de scanner */ }
+  }
+  requestAnimationFrame(scanQrFrame);
+}
+function closeQrScanner(){
+  if(qrScannerStream){ qrScannerStream.getTracks().forEach(t=>t.stop()); qrScannerStream=null; }
+  closeModal();
+}
+
+async function removeAnimal(id){
+  if(!confirm('Supprimer cet animal/lot ? Les pesées et dépenses liées resteront mais ne seront plus rattachées.')) return;
+  await deleteRecord('animals', id);
+  closeModal();
+  renderAll();
+}
+
+async function openAnimalDetail(id){
+  const animals = await idbAll('animals');
+  const a = animals.find(x=>x.id===id);
+  if(!a) return;
+  const species = await idbAll('species');
+  const sp = species.find(s=>s.id===a.species_id);
+  const weighings = (await idbAll('weighings')).filter(w=>w.animal_id===id).sort((x,y)=>x.weighed_at.localeCompare(y.weighed_at));
+  const expenses = (await idbAll('animal_expenses')).filter(x=>x.animal_id===id);
+  const totalExpenses = expenses.reduce((s,x)=>s+Number(x.amount_fcfa),0);
+  const lastWeight = weighings.length? weighings[weighings.length-1].weight_kg : null;
+  const costPerKg = (lastWeight && totalExpenses) ? (totalExpenses/lastWeight) : null;
+
+  openModal(`
+    <div class="modal-header"><h3>${a.name||a.lot_label||a.tag_number||'Animal'}</h3><button onclick="closeModal()">✕</button></div>
+    ${a.photo_url?`<img src="${a.photo_url}" style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;margin-bottom:8px;">`:''}
+    <div class="small-muted">${sp?sp.label:''} ${a.breed?(' · '+a.breed):''} ${a.location?(' · '+a.location):''}</div>
+    <div class="kpi-grid" style="margin-top:12px;">
+      <div class="kpi"><div class="val">${lastWeight?lastWeight+' kg':'—'}</div><div class="label">Dernier poids</div></div>
+      <div class="kpi"><div class="val">${totalExpenses.toLocaleString('fr-FR')} F</div><div class="label">Dépenses cumulées</div></div>
+    </div>
+    ${costPerKg?`<div class="alert amber">Coût de production estimé : <strong>${Math.round(costPerKg).toLocaleString('fr-FR')} FCFA/kg</strong></div>`:''}
+
+    <h3 style="margin-top:16px;font-size:.95rem;">Pesées</h3>
+    ${weighings.length>=2?'<canvas id="weightChart" style="width:100%;max-height:140px;"></canvas>':''}
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Poids (kg)</th></tr>
+      ${weighings.map(w=>`<tr><td>${w.weighed_at}</td><td>${w.weight_kg}</td></tr>`).join('') || '<tr><td colspan="2" class="small-muted">Aucune pesée</td></tr>'}
+    </table>
+    <button class="btn secondary" style="margin-top:8px;" onclick="openWeighForm('${a.id}')">+ Ajouter une pesée</button>
+
+    <h3 style="margin-top:16px;font-size:.95rem;">Dépenses liées</h3>
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Catégorie</th><th>Montant</th></tr>
+      ${expenses.map(x=>`<tr><td>${x.expense_date}</td><td>${x.category}</td><td>${Number(x.amount_fcfa).toLocaleString('fr-FR')} F</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucune dépense</td></tr>'}
+    </table>
+    <button class="btn secondary" style="margin-top:8px;" onclick="openExpenseForm('${a.id}')">+ Ajouter une dépense</button>
+
+    ${a.target_sale_weight_kg ? renderTargetWeightAlert(a, lastWeight) : ''}
+
+    <div id="speciesSpecificBox"></div>
+
+    <hr class="divider">
+    <button class="btn secondary block" onclick="showAnimalQr('${a.id}', '${(a.name||a.lot_label||a.tag_number||'Animal').replace(/'/g,"")}')">📱 Générer le QR code de cette fiche</button>
+    <button class="btn block" style="margin-top:8px;" onclick='openAnimalForm(${jsonAttr(a)})'>Modifier la fiche</button>
+  `);
+  if(weighings.length>=2) drawWeightChart(weighings);
+  renderSpeciesSpecificSection(a, sp);
+}
+
+function drawWeightChart(weighings){
+  const canvas = document.getElementById('weightChart');
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 300, h = 130;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const weights = weighings.map(x=>Number(x.weight_kg));
+  const min = Math.min(...weights), max = Math.max(...weights);
+  const pad = 10;
+  const range = (max-min) || 1;
+  ctx.strokeStyle = '#2E7D6B'; ctx.lineWidth = 2; ctx.beginPath();
+  weighings.forEach((pt,i)=>{
+    const x = pad + (i/(weighings.length-1))*(w-2*pad);
+    const y = h-pad - ((Number(pt.weight_kg)-min)/range)*(h-2*pad);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  ctx.fillStyle = '#2E7D6B';
+  weighings.forEach((pt,i)=>{
+    const x = pad + (i/(weighings.length-1))*(w-2*pad);
+    const y = h-pad - ((Number(pt.weight_kg)-min)/range)*(h-2*pad);
+    ctx.beginPath(); ctx.arc(x,y,3,0,7); ctx.fill();
+  });
+}
+
+function renderTargetWeightAlert(a, lastWeight){
+  if(!lastWeight) return '';
+  const reached = lastWeight >= a.target_sale_weight_kg;
+  return `<div class="alert ${reached?'':'amber'}">${reached
+    ? `Poids de rentabilité atteint (cible ${a.target_sale_weight_kg} kg) — prêt à la vente`
+    : `Poids cible : ${a.target_sale_weight_kg} kg (encore ${(a.target_sale_weight_kg-lastWeight).toFixed(1)} kg à gagner)`}</div>`;
+}
+
+/* =========================================================
+   SUIVI SPÉCIFIQUE PAR ESPÈCE
+   ========================================================= */
+const HEALTH_EVENT_LABELS = {
+  vaccin: 'Vaccin', vermifuge: 'Vermifuge', analyse_fecale: 'Analyse fécale',
+  parage_sabot: 'Parage des sabots', flottage_dentaire: 'Flottage dentaire',
+  ferrage: 'Ferrage / parage', puce: 'Identification (puce)', sevrage: 'Sevrage (poids)'
+};
+
+async function renderSpeciesSpecificSection(a, sp){
+  const box = document.getElementById('speciesSpecificBox');
+  if(!box || !sp) return;
+  let html = '';
+
+  if(sp.code === 'volaille'){
+    const logs = (await idbAll('poultry_daily_logs')).filter(l=>l.animal_id===a.id).sort((x,y)=>y.log_date.localeCompare(x.log_date));
+    const totalMortality = logs.reduce((s,l)=>s+Number(l.mortality_count||0),0);
+    html = `
+      <h3 style="margin-top:16px;font-size:.95rem;">🥚 Suivi quotidien (ponte / mortalité / aliment)</h3>
+      <div class="small-muted">Effectif actuel : ${a.current_count ?? '—'}${a.initial_count?(' / '+a.initial_count+' au départ'):''} · Mortalité cumulée : ${totalMortality}</div>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Œufs</th><th>Morts</th><th>Aliment (kg)</th></tr>
+        ${logs.slice(0,10).map(l=>`<tr><td>${l.log_date}</td><td>${l.egg_count??'—'}</td><td>${l.mortality_count??0}</td><td>${l.feed_kg??'—'}</td></tr>`).join('') || '<tr><td colspan="4" class="small-muted">Aucun relevé</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openPoultryLogForm('${a.id}')">+ Relevé du jour</button>
+    `;
+  }
+
+  else if(sp.code === 'ovin' || sp.code === 'caprin'){
+    const milk = (await idbAll('milk_records')).filter(m=>m.animal_id===a.id).sort((x,y)=>y.record_date.localeCompare(x.record_date));
+    const health = (await idbAll('health_events')).filter(h=>h.animal_id===a.id && ['vermifuge','analyse_fecale','sevrage'].includes(h.event_type)).sort((x,y)=>y.event_date.localeCompare(x.event_date));
+    html = `
+      <h3 style="margin-top:16px;font-size:.95rem;">🥛 Lait &amp; santé mammaire</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Quantité (L)</th><th>Mammite</th></tr>
+        ${milk.slice(0,8).map(m=>`<tr><td>${m.record_date}</td><td>${m.quantity_l??'—'}</td><td>${m.has_mastitis?'⚠️ oui':'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun relevé</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openMilkForm('${a.id}')">+ Relevé de lait</button>
+
+      <h3 style="margin-top:16px;font-size:.95rem;">🪱 Parasitisme &amp; sevrage</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Type</th><th>Détail</th></tr>
+        ${health.slice(0,8).map(h=>`<tr><td>${h.event_date}</td><td>${HEALTH_EVENT_LABELS[h.event_type]||h.event_type}</td><td>${h.value_numeric??h.note??'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun événement</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openHealthEventForm('${a.id}', ['vermifuge','analyse_fecale','sevrage'])">+ Vermifuge / analyse / sevrage</button>
+    `;
+  }
+
+  else if(sp.code === 'bovin'){
+    const rations = (await idbAll('feed_rations')).filter(f=>f.animal_id===a.id).sort((x,y)=>y.ration_date.localeCompare(x.ration_date));
+    const hooves = (await idbAll('health_events')).filter(h=>h.animal_id===a.id && h.event_type==='parage_sabot').sort((x,y)=>y.event_date.localeCompare(x.event_date));
+    html = `
+      <h3 style="margin-top:16px;font-size:.95rem;">🌾 Ration alimentaire</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Aliment</th><th>Quantité (kg)</th></tr>
+        ${rations.slice(0,8).map(r=>`<tr><td>${r.ration_date}</td><td>${r.feed_type||'—'}</td><td>${r.quantity_kg??'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun relevé</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openFeedRationForm('${a.id}')">+ Ration du jour</button>
+
+      <h3 style="margin-top:16px;font-size:.95rem;">🐾 Soins des sabots</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Note</th></tr>
+        ${hooves.slice(0,6).map(h=>`<tr><td>${h.event_date}</td><td>${h.note||'—'}</td></tr>`).join('') || '<tr><td colspan="2" class="small-muted">Aucun soin enregistré</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openHealthEventForm('${a.id}', ['parage_sabot'])">+ Parage des sabots</button>
+    `;
+  }
+
+  else if(sp.code === 'equide'){
+    const work = (await idbAll('work_hours')).filter(w=>w.animal_id===a.id).sort((x,y)=>y.work_date.localeCompare(x.work_date));
+    const care = (await idbAll('health_events')).filter(h=>h.animal_id===a.id && ['flottage_dentaire','ferrage'].includes(h.event_type)).sort((x,y)=>y.event_date.localeCompare(x.event_date));
+    html = `
+      <h3 style="margin-top:16px;font-size:.95rem;">🦷 Soins dentaires &amp; maréchalerie</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Type</th><th>Note</th></tr>
+        ${care.slice(0,8).map(h=>`<tr><td>${h.event_date}</td><td>${HEALTH_EVENT_LABELS[h.event_type]||h.event_type}</td><td>${h.note||'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun soin enregistré</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openHealthEventForm('${a.id}', ['flottage_dentaire','ferrage'])">+ Soin dentaire / ferrage</button>
+
+      <h3 style="margin-top:16px;font-size:.95rem;">🐴 Charge de travail</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Heures travail</th><th>Heures repos</th></tr>
+        ${work.slice(0,8).map(w=>`<tr><td>${w.work_date}</td><td>${w.hours_worked??'—'}</td><td>${w.hours_rest??'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun relevé</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openWorkHoursForm('${a.id}')">+ Relevé du jour</button>
+    `;
+  }
+
+  else if(sp.code === 'canide'){
+    const vet = (await idbAll('health_events')).filter(h=>h.animal_id===a.id && ['vaccin','vermifuge','puce'].includes(h.event_type)).sort((x,y)=>y.event_date.localeCompare(x.event_date));
+    const behavior = (await idbAll('behavior_assessments')).filter(b=>b.animal_id===a.id).sort((x,y)=>y.assess_date.localeCompare(x.assess_date));
+    const heat = a.sex==='femelle' ? (await idbAll('heat_cycles')).filter(h=>h.animal_id===a.id).sort((x,y)=>y.start_date.localeCompare(x.start_date)) : [];
+    html = `
+      <h3 style="margin-top:16px;font-size:.95rem;">💉 Suivi vétérinaire</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Type</th><th>Note</th></tr>
+        ${vet.slice(0,8).map(h=>`<tr><td>${h.event_date}</td><td>${HEALTH_EVENT_LABELS[h.event_type]||h.event_type}</td><td>${h.note||'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun événement</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openHealthEventForm('${a.id}', ['vaccin','vermifuge','puce'])">+ Vaccin / vermifuge / puce</button>
+
+      <h3 style="margin-top:16px;font-size:.95rem;">🐕 Évaluation comportementale</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Obéissance</th><th>Garde</th></tr>
+        ${behavior.slice(0,6).map(b=>`<tr><td>${b.assess_date}</td><td>${b.obedience_score??'—'}/5</td><td>${b.guard_score??'—'}/5</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucune évaluation</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openBehaviorForm('${a.id}')">+ Évaluation</button>
+
+      ${a.sex==='femelle' ? `
+      <h3 style="margin-top:16px;font-size:.95rem;">🔄 Cycle des chaleurs</h3>
+      <table class="weigh-table">
+        <tr><th>Date de début</th><th>Note</th></tr>
+        ${heat.slice(0,6).map(h=>`<tr><td>${h.start_date}</td><td>${h.note||'—'}</td></tr>`).join('') || '<tr><td colspan="2" class="small-muted">Aucun cycle enregistré</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openHeatCycleForm('${a.id}')">+ Enregistrer un cycle</button>` : ''}
+    `;
+  }
+
+  box.innerHTML = html;
+}
+
+function openPoultryLogForm(animalId){
+  idbAll('stock_items').then(items=>{
+    const alimentItems = items.filter(i=>i.category==='aliment');
+    openModal(`
+      <div class="modal-header"><h3>Relevé quotidien</h3><button onclick="closeModal()">✕</button></div>
+      <form id="poultryForm">
+        <label>Date</label><input type="date" id="pl_date" value="${new Date().toISOString().slice(0,10)}">
+        <div class="field-row" style="margin-top:8px;">
+          <div><label>Œufs pondus</label><input type="number" id="pl_eggs"></div>
+          <div><label>Mortalité du jour</label><input type="number" id="pl_deaths" value="0"></div>
+        </div>
+        <label style="margin-top:8px;">Aliment distribué (kg)</label><input type="number" step="0.1" id="pl_feed">
+        ${alimentItems.length ? `
+        <label style="margin-top:8px;">Déduire du stock (facultatif)</label>
+        <select id="pl_stock_item">
+          <option value="">— ne pas déduire —</option>
+          ${alimentItems.map(i=>`<option value="${i.id}">${i.name} (${i.quantity_on_hand} ${i.unit||''})</option>`).join('')}
+        </select>` : ''}
+        <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      </form>
+    `);
+    document.getElementById('poultryForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const feedKg = document.getElementById('pl_feed').value ? Number(document.getElementById('pl_feed').value) : null;
+      await saveRecord('poultry_daily_logs', {
+        animal_id: animalId,
+        log_date: document.getElementById('pl_date').value,
+        egg_count: document.getElementById('pl_eggs').value ? Number(document.getElementById('pl_eggs').value) : null,
+        mortality_count: Number(document.getElementById('pl_deaths').value || 0),
+        feed_kg: feedKg,
+      }, true);
+      const stockItemId = document.getElementById('pl_stock_item') ? document.getElementById('pl_stock_item').value : '';
+      if(stockItemId && feedKg) await deductFromStock(stockItemId, feedKg, 'Aliment distribué à un lot de volailles');
+      const mortality = Number(document.getElementById('pl_deaths').value || 0);
+      if(mortality > 0){
+        const animals = await idbAll('animals');
+        const animal = animals.find(x=>x.id===animalId);
+        if(animal && animal.current_count != null){
+          animal.current_count = Math.max(0, Number(animal.current_count) - mortality);
+          await updateLocalOnly('animals', animal);
+        }
+      }
+      openAnimalDetail(animalId);
+      renderAll();
+    });
+  });
+}
+
+function openMilkForm(animalId){
+  openModal(`
+    <div class="modal-header"><h3>Relevé de lait</h3><button onclick="closeModal()">✕</button></div>
+    <form id="milkForm">
+      <label>Date</label><input type="date" id="mk_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Quantité (litres)</label><input type="number" step="0.1" id="mk_qty">
+      <label style="margin-top:8px;"><input type="checkbox" id="mk_mastitis"> Signe de mammite</label>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('milkForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('milk_records', {
+      animal_id: animalId,
+      record_date: document.getElementById('mk_date').value,
+      quantity_l: document.getElementById('mk_qty').value ? Number(document.getElementById('mk_qty').value) : null,
+      has_mastitis: document.getElementById('mk_mastitis').checked,
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+async function deductFromStock(stockItemId, qty, note){
+  if(!stockItemId || !qty) return;
+  const items = await idbAll('stock_items');
+  const item = items.find(x=>x.id===stockItemId);
+  if(!item) return;
+  await saveRecord('stock_movements', {
+    item_id: stockItemId,
+    movement_type: 'sortie',
+    quantity: Number(qty),
+    movement_date: new Date().toISOString().slice(0,10),
+    note: note || 'Consommation automatique (ration/relevé)',
+  }, true);
+  // Affichage local immédiat (le trigger côté base recalculera la valeur exacte à la synchro)
+  item.quantity_on_hand = Number(item.quantity_on_hand||0) - Number(qty);
+  await updateLocalOnly('stock_items', item);
+}
+
+function openFeedRationForm(animalId){
+  idbAll('stock_items').then(items=>{
+    const alimentItems = items.filter(i=>i.category==='aliment');
+    openModal(`
+      <div class="modal-header"><h3>Ration du jour</h3><button onclick="closeModal()">✕</button></div>
+      <form id="rationForm">
+        <label>Date</label><input type="date" id="rt_date" value="${new Date().toISOString().slice(0,10)}">
+        <div class="field-row" style="margin-top:8px;">
+          <div><label>Type d'aliment</label><input id="rt_type" placeholder="fourrage, complément..."></div>
+          <div><label>Quantité (kg)</label><input type="number" step="0.1" id="rt_qty"></div>
+        </div>
+        ${alimentItems.length ? `
+        <label style="margin-top:8px;">Déduire du stock (facultatif)</label>
+        <select id="rt_stock_item">
+          <option value="">— ne pas déduire —</option>
+          ${alimentItems.map(i=>`<option value="${i.id}">${i.name} (${i.quantity_on_hand} ${i.unit||''})</option>`).join('')}
+        </select>` : '<div class="small-muted" style="margin-top:6px;">Aucun aliment en stock — ajoute-en un dans l\'onglet Stocks pour activer la déduction automatique.</div>'}
+        <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      </form>
+    `);
+    document.getElementById('rationForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const qty = document.getElementById('rt_qty').value ? Number(document.getElementById('rt_qty').value) : null;
+      await saveRecord('feed_rations', {
+        animal_id: animalId,
+        ration_date: document.getElementById('rt_date').value,
+        feed_type: document.getElementById('rt_type').value || null,
+        quantity_kg: qty,
+      }, true);
+      const stockItemId = document.getElementById('rt_stock_item') ? document.getElementById('rt_stock_item').value : '';
+      if(stockItemId && qty) await deductFromStock(stockItemId, qty, 'Ration donnée à un animal');
+      openAnimalDetail(animalId);
+      renderAll();
+    });
+  });
+}
+
+function openWorkHoursForm(animalId){
+  openModal(`
+    <div class="modal-header"><h3>Charge de travail</h3><button onclick="closeModal()">✕</button></div>
+    <form id="workForm">
+      <label>Date</label><input type="date" id="wk_date" value="${new Date().toISOString().slice(0,10)}">
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Heures de travail</label><input type="number" step="0.5" id="wk_worked"></div>
+        <div><label>Heures de repos</label><input type="number" step="0.5" id="wk_rest"></div>
+      </div>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('workForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('work_hours', {
+      animal_id: animalId,
+      work_date: document.getElementById('wk_date').value,
+      hours_worked: document.getElementById('wk_worked').value ? Number(document.getElementById('wk_worked').value) : null,
+      hours_rest: document.getElementById('wk_rest').value ? Number(document.getElementById('wk_rest').value) : null,
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+function openBehaviorForm(animalId){
+  openModal(`
+    <div class="modal-header"><h3>Évaluation comportementale</h3><button onclick="closeModal()">✕</button></div>
+    <form id="behForm">
+      <label>Date</label><input type="date" id="bh_date" value="${new Date().toISOString().slice(0,10)}">
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Obéissance (1-5)</label><input type="number" min="1" max="5" id="bh_obed"></div>
+        <div><label>Garde (1-5)</label><input type="number" min="1" max="5" id="bh_guard"></div>
+      </div>
+      <label style="margin-top:8px;">Note (aboiements, remarques...)</label><input id="bh_note">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('behForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('behavior_assessments', {
+      animal_id: animalId,
+      assess_date: document.getElementById('bh_date').value,
+      obedience_score: document.getElementById('bh_obed').value ? Number(document.getElementById('bh_obed').value) : null,
+      guard_score: document.getElementById('bh_guard').value ? Number(document.getElementById('bh_guard').value) : null,
+      note: document.getElementById('bh_note').value || null,
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+function openHeatCycleForm(animalId){
+  openModal(`
+    <div class="modal-header"><h3>Nouveau cycle de chaleurs</h3><button onclick="closeModal()">✕</button></div>
+    <form id="heatForm">
+      <label>Date de début</label><input type="date" id="ht_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Note</label><input id="ht_note">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('heatForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('heat_cycles', {
+      animal_id: animalId,
+      start_date: document.getElementById('ht_date').value,
+      note: document.getElementById('ht_note').value || null,
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+function openHealthEventForm(animalId, allowedTypes){
+  const options = allowedTypes.map(t=>`<option value="${t}">${HEALTH_EVENT_LABELS[t]||t}</option>`).join('');
+  const showValue = allowedTypes.includes('sevrage') || allowedTypes.includes('analyse_fecale');
+  openModal(`
+    <div class="modal-header"><h3>Nouvel événement</h3><button onclick="closeModal()">✕</button></div>
+    <form id="healthForm">
+      <label>Type</label><select id="he_type">${options}</select>
+      <label style="margin-top:8px;">Date</label><input type="date" id="he_date" value="${new Date().toISOString().slice(0,10)}">
+      ${showValue?'<label style="margin-top:8px;">Valeur (kg au sevrage, résultat...)</label><input type="number" step="0.1" id="he_value">':''}
+      <label style="margin-top:8px;">Note</label><input id="he_note">
+      <label style="margin-top:8px;">Prochain rappel (facultatif)</label><input type="date" id="he_next">
+      ${photoFieldHTML('he_photo', null)}
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  const healthPhotoField = wirePhotoField('he_photo', null);
+  document.getElementById('healthForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('health_events', {
+      animal_id: animalId,
+      event_type: document.getElementById('he_type').value,
+      event_date: document.getElementById('he_date').value,
+      value_numeric: (showValue && document.getElementById('he_value').value) ? Number(document.getElementById('he_value').value) : null,
+      note: document.getElementById('he_note').value || null,
+      next_due_date: document.getElementById('he_next').value || null,
+      photo_url: healthPhotoField.getValue(),
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+function openWeighForm(animalId){
+  openModal(`
+    <div class="modal-header"><h3>Nouvelle pesée</h3><button onclick="closeModal()">✕</button></div>
+    <form id="weighForm">
+      <label>Date</label><input type="date" id="w_date" value="${new Date().toISOString().slice(0,10)}" required>
+      <label style="margin-top:8px;">Poids (kg)</label><input type="number" step="0.1" id="w_weight" required>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('weighForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('weighings', {
+      animal_id: animalId,
+      weighed_at: document.getElementById('w_date').value,
+      weight_kg: Number(document.getElementById('w_weight').value)
+    }, true);
+    openAnimalDetail(animalId);
+    renderAll();
+  });
+}
+
+function openExpenseForm(preselectedAnimalId){
+  idbAll('animals').then(animals=>{
+    openModal(`
+      <div class="modal-header"><h3>Nouvelle dépense</h3><button onclick="closeModal()">✕</button></div>
+      <form id="expForm">
+        <label>Animal / lot concerné</label>
+        <select id="e_animal" required>${animals.map(a=>`<option value="${a.id}" ${a.id===preselectedAnimalId?'selected':''}>${a.name||a.lot_label||a.tag_number}</option>`).join('')}</select>
+        <div class="field-row" style="margin-top:8px;">
+          <div><label>Catégorie</label>
+            <select id="e_cat">
+              <option value="alimentation">Alimentation</option>
+              <option value="sante">Santé</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+          <div><label>Montant (FCFA)</label><input type="number" id="e_amount" required></div>
+        </div>
+        <label style="margin-top:8px;">Date</label><input type="date" id="e_date" value="${new Date().toISOString().slice(0,10)}">
+        <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      </form>
+    `);
+    document.getElementById('expForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const chosenAnimalId = document.getElementById('e_animal').value;
+      await saveRecord('animal_expenses', {
+        animal_id: chosenAnimalId,
+        category: document.getElementById('e_cat').value,
+        amount_fcfa: Number(document.getElementById('e_amount').value),
+        expense_date: document.getElementById('e_date').value
+      }, true);
+      if(preselectedAnimalId){ openAnimalDetail(preselectedAnimalId); } else { closeModal(); }
+      renderAll();
+    });
+  });
+}
+
+/* =========================================================
+   AGRO — PARCELLES, ITINÉRAIRE TECHNIQUE, OBSERVATIONS, RÉCOLTES
+   ========================================================= */
+const CROP_OP_LABELS = {
+  labour:'Labour', semis:'Semis', fertilisation:'Fertilisation',
+  irrigation:'Irrigation', traitement_phyto:'Traitement phytosanitaire', autre:'Autre'
+};
+const OBS_ISSUE_LABELS = { ravageur:'Ravageur', maladie:'Maladie', stress_hydrique:'Stress hydrique', autre:'Autre' };
+
+const PRODUCTION_TYPE_LABELS = {champ:'Champ', pepiniere:'Pépinière', maraicher:'Maraîcher'};
+document.getElementById('filterPlotType').addEventListener('change', renderPlotsList);
+
+async function renderPlotsList(){
+  const plots = await idbAll('plots');
+  const box = document.getElementById('plotsList');
+  if(!box) return;
+  const filter = document.getElementById('filterPlotType').value;
+  const filtered = filter ? plots.filter(p=>(p.production_type||'champ')===filter) : plots;
+  if(filtered.length === 0){
+    box.innerHTML = '<div class="empty">Aucune parcelle enregistrée. Touche + pour en ajouter une.</div>';
+    return;
+  }
+  filtered.sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''));
+  box.innerHTML = filtered.map(p=>`
+    <div class="list-item" onclick="openPlotDetail('${p.id}')">
+      <div><div>${escapeHtml(p.name)}</div><div class="meta">${escapeHtml([PRODUCTION_TYPE_LABELS[p.production_type||'champ'], p.area_ha?p.area_ha+' ha':'', p.soil_type, p.current_crop].filter(Boolean).join(' · '))}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="badge ${p.status==='active'?'actif':'vendu'}">${p.status==='active'?'active':'en jachère'}</span>
+        <button onclick="event.stopPropagation(); removePlot('${p.id}')" title="Supprimer" style="background:none;border:none;color:var(--red);font-size:1.1rem;padding:4px;cursor:pointer;">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+let leafletLoadingPromise = null;
+function ensureLeafletLoaded(){
+  if(window.L) return Promise.resolve();
+  if(leafletLoadingPromise) return leafletLoadingPromise;
+  leafletLoadingPromise = new Promise((resolve, reject)=>{
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css';
+    document.head.appendChild(css);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return leafletLoadingPromise;
+}
+
+function openGlobalMap(){
+  openModal(`
+    <div class="modal-header"><h3>Carte des parcelles</h3><button onclick="closeModal()">✕</button></div>
+    <div id="globalMap" style="width:100%;height:60vh;border-radius:10px;">
+      <div class="small-muted" style="padding:20px;text-align:center;">Chargement de la carte…</div>
+    </div>
+  `);
+  ensureLeafletLoaded().then(()=>{
+    document.getElementById('globalMap').innerHTML = '';
+    idbAll('plots').then(plots=>{
+      const geo = plots.filter(p=>p.gps_lat && p.gps_lng);
+      const center = geo.length ? [geo[0].gps_lat, geo[0].gps_lng] : [9.3, 2.3]; // centre approximatif du Bénin par défaut
+      const map = L.map('globalMap').setView(center, geo.length ? 12 : 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+      if(geo.length === 0){
+        L.marker(center).addTo(map).bindPopup('Aucune parcelle géolocalisée pour le moment.').openPopup();
+      } else {
+        geo.forEach(p=>{
+          L.marker([p.gps_lat, p.gps_lng]).addTo(map)
+            .bindPopup(`<strong>${p.name}</strong><br>${p.current_crop||''} ${p.area_ha?('· '+p.area_ha+' ha'):''}`);
+        });
+        if(geo.length > 1){
+          map.fitBounds(geo.map(p=>[p.gps_lat,p.gps_lng]), {padding:[30,30]});
+        }
+      }
+      setTimeout(()=>map.invalidateSize(), 200);
+    });
+  }).catch(()=>{
+    document.getElementById('globalMap').innerHTML = '<div class="small-muted" style="padding:20px;text-align:center;">Impossible de charger la carte (vérifie ta connexion).</div>';
+  });
+}
+
+function openPlotForm(existing){
+  const p = existing || {};
+  openModal(`
+    <div class="modal-header"><h3>${existing?'Modifier':'Nouvelle'} parcelle</h3><button onclick="closeModal()">✕</button></div>
+    <form id="plotForm">
+      <label>Nom de la parcelle</label><input id="p_name" value="${p.name||''}" required>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Type de production</label>
+          <select id="p_prod_type">
+            <option value="champ" ${p.production_type==='champ'||!p.production_type?'selected':''}>Champ</option>
+            <option value="pepiniere" ${p.production_type==='pepiniere'?'selected':''}>Pépinière</option>
+            <option value="maraicher" ${p.production_type==='maraicher'?'selected':''}>Maraîcher</option>
+          </select>
+        </div>
+        <div><label>Statut</label>
+          <select id="p_status">
+            <option value="active" ${p.status==='active'||!p.status?'selected':''}>Active</option>
+            <option value="en_jachere" ${p.status==='en_jachere'?'selected':''}>En jachère</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Superficie (ha)</label><input type="number" step="0.01" id="p_area" value="${p.area_ha||''}"></div>
+        <div><label>Type de sol</label><input id="p_soil" value="${p.soil_type||''}"></div>
+      </div>
+      <div class="field-row single" style="margin-top:8px;">
+        <div><label>Culture en cours</label><input id="p_crop" value="${p.current_crop||''}"></div>
+      </div>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Latitude GPS (pour la météo)</label><input type="number" step="0.00001" id="p_lat" value="${p.gps_lat||''}"></div>
+        <div><label>Longitude GPS</label><input type="number" step="0.00001" id="p_lng" value="${p.gps_lng||''}"></div>
+      </div>
+      <button type="button" class="btn secondary block" style="margin-top:6px;" onclick="useCurrentLocationForPlot()">📍 Utiliser ma position actuelle</button>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      ${existing ?'<button type="button" class="btn danger block" style="margin-top:8px;" onclick="removePlot(\''+existing.id+'\')">Supprimer</button>':''}
+    </form>
+  `);
+  document.getElementById('plotForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('plots', {
+      ...p,
+      name: document.getElementById('p_name').value,
+      area_ha: document.getElementById('p_area').value ? Number(document.getElementById('p_area').value) : null,
+      soil_type: document.getElementById('p_soil').value || null,
+      current_crop: document.getElementById('p_crop').value || null,
+      production_type: document.getElementById('p_prod_type').value,
+      status: document.getElementById('p_status').value,
+      gps_lat: document.getElementById('p_lat').value ? Number(document.getElementById('p_lat').value) : null,
+      gps_lng: document.getElementById('p_lng').value ? Number(document.getElementById('p_lng').value) : null,
+    }, !existing);
+    closeModal();
+    renderAll();
+  });
+}
+
+function useCurrentLocationForPlot(){
+  if(!navigator.geolocation){ alert('Géolocalisation non disponible sur cet appareil.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      document.getElementById('p_lat').value = pos.coords.latitude.toFixed(5);
+      document.getElementById('p_lng').value = pos.coords.longitude.toFixed(5);
+    },
+    ()=>alert('Impossible de récupérer la position (autorisation refusée ?).')
+  );
+}
+
+async function removePlot(id){
+  if(!confirm('Supprimer cette parcelle ?')) return;
+  await deleteRecord('plots', id);
+  closeModal();
+  renderAll();
+}
+
+async function openPlotDetail(id){
+  const plots = await idbAll('plots');
+  const p = plots.find(x=>x.id===id);
+  if(!p) return;
+  const ops = (await idbAll('crop_operations')).filter(o=>o.plot_id===id).sort((a,b)=>b.operation_date.localeCompare(a.operation_date));
+  const obs = (await idbAll('crop_observations')).filter(o=>o.plot_id===id).sort((a,b)=>b.obs_date.localeCompare(a.obs_date));
+  const harvests = (await idbAll('harvests')).filter(h=>h.plot_id===id).sort((a,b)=>b.harvest_date.localeCompare(a.harvest_date));
+  const totalCost = ops.reduce((s,o)=>s+Number(o.cost_fcfa||0),0);
+  const prodType = p.production_type || 'champ';
+
+  openModal(`
+    <div class="modal-header"><h3>${p.name}</h3><button onclick="closeModal()">✕</button></div>
+    <div class="small-muted">${[PRODUCTION_TYPE_LABELS[prodType], p.area_ha?p.area_ha+' ha':'', p.soil_type, p.current_crop].filter(Boolean).join(' · ')}</div>
+    <div class="kpi-grid" style="margin-top:12px;">
+      <div class="kpi"><div class="val">${totalCost.toLocaleString('fr-FR')} F</div><div class="label">Coût cumulé (itinéraire)</div></div>
+      <div class="kpi"><div class="val">${harvests.length}</div><div class="label">Récoltes enregistrées</div></div>
+    </div>
+
+    <div id="nurseryBox-${p.id}"></div>
+
+    <h3 style="margin-top:16px;font-size:.95rem;">🌦️ Météo</h3>
+    <div id="weatherBox-${p.id}" class="small-muted">${p.gps_lat && p.gps_lng ? 'Chargement…' : "Ajoute les coordonnées GPS de la parcelle (bouton 📍 dans le formulaire) pour voir la météo."}</div>
+
+    <h3 style="margin-top:16px;font-size:.95rem;">🚜 Itinéraire technique</h3>
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Opération</th><th>Produit</th><th>Coût</th></tr>
+      ${ops.slice(0,10).map(o=>`<tr><td>${o.operation_date}</td><td>${CROP_OP_LABELS[o.operation_type]||o.operation_type}</td><td>${o.product_name?(o.product_name+(o.quantity_used?' ('+o.quantity_used+')':'')):'—'}</td><td>${o.cost_fcfa?Number(o.cost_fcfa).toLocaleString('fr-FR')+' F':'—'}</td></tr>`).join('') || '<tr><td colspan="4" class="small-muted">Aucune opération</td></tr>'}
+    </table>
+    <button class="btn secondary" style="margin-top:8px;" onclick="openCropOperationForm('${p.id}')">+ Opération</button>
+
+    <h3 style="margin-top:16px;font-size:.95rem;">🔍 Observations</h3>
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Type</th><th>Note</th></tr>
+      ${obs.slice(0,8).map(o=>`<tr><td>${o.obs_date}</td><td>${o.issue_type?OBS_ISSUE_LABELS[o.issue_type]:'—'}</td><td>${o.note||'—'}${o.photo_url?' 📷':''}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucune observation</td></tr>'}
+    </table>
+    <button class="btn secondary" style="margin-top:8px;" onclick="openCropObservationForm('${p.id}')">+ Observation</button>
+
+    <h3 style="margin-top:16px;font-size:.95rem;">🌾 Récoltes</h3>
+    ${harvests.map(h=>renderHarvestBlock(h)).join('') || '<div class="small-muted">Aucune récolte enregistrée</div>'}
+    <button class="btn secondary" style="margin-top:8px;" onclick="openHarvestForm('${p.id}')">+ Récolte</button>
+
+    <hr class="divider">
+    <button class="btn block" onclick='openPlotForm(${jsonAttr(p)})'>Modifier la parcelle</button>
+  `);
+  if(p.gps_lat && p.gps_lng) loadPlotWeather(p);
+  if(prodType === 'pepiniere') renderNurseryBatches(p);
+}
+
+async function renderNurseryBatches(p){
+  const box = document.getElementById('nurseryBox-'+p.id);
+  if(!box) return;
+  const batches = (await idbAll('nursery_batches')).filter(b=>b.plot_id===p.id).sort((a,b)=>b.sowing_date.localeCompare(a.sowing_date));
+  const STATUS_LABELS = {en_germination:'En germination', pret:'Prêt', ecoule:'Écoulé'};
+  box.innerHTML = `
+    <h3 style="margin-top:16px;font-size:.95rem;">🌱 Lots de semis (pépinière)</h3>
+    ${batches.map(b=>`
+      <div class="card" style="margin-top:8px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;">
+          <div><strong>${b.variety}</strong> — semé le ${b.sowing_date}</div>
+          <span class="badge ${b.status==='pret'?'actif':(b.status==='ecoule'?'vendu':'partielle')}">${STATUS_LABELS[b.status]}</span>
+        </div>
+        <div class="small-muted">${[b.quantity_sown?('Semé : '+b.quantity_sown):'', b.germinated_count?('Germé : '+b.germinated_count):'', b.available_quantity!=null?('Disponible : '+b.available_quantity):'', b.ready_date?('Prêt le '+b.ready_date):''].filter(Boolean).join(' · ')}</div>
+      </div>`).join('') || '<div class="small-muted">Aucun lot de semis enregistré</div>'}
+    <button class="btn secondary" style="margin-top:8px;" onclick="openNurseryBatchForm('${p.id}')">+ Lot de semis</button>
+  `;
+}
+
+function openNurseryBatchForm(plotId, existing){
+  const b = existing || {};
+  openModal(`
+    <div class="modal-header"><h3>${existing?'Modifier le':'Nouveau'} lot de semis</h3><button onclick="closeModal()">✕</button></div>
+    <form id="nurseryForm">
+      <label>Variété / espèce</label><input id="nb_variety" value="${b.variety||''}" placeholder="ex: Tomate Roma" required>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Date de semis</label><input type="date" id="nb_sowing" value="${b.sowing_date||new Date().toISOString().slice(0,10)}"></div>
+        <div><label>Quantité semée</label><input type="number" id="nb_qty_sown" value="${b.quantity_sown||''}"></div>
+      </div>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Quantité germée</label><input type="number" id="nb_germinated" value="${b.germinated_count||''}"></div>
+        <div><label>Quantité disponible</label><input type="number" id="nb_available" value="${b.available_quantity||''}"></div>
+      </div>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Date prête</label><input type="date" id="nb_ready" value="${b.ready_date||''}"></div>
+        <div><label>Statut</label>
+          <select id="nb_status">
+            <option value="en_germination" ${b.status==='en_germination'||!b.status?'selected':''}>En germination</option>
+            <option value="pret" ${b.status==='pret'?'selected':''}>Prêt</option>
+            <option value="ecoule" ${b.status==='ecoule'?'selected':''}>Écoulé</option>
+          </select>
+        </div>
+      </div>
+      <label style="margin-top:8px;">Note</label><input id="nb_note" value="${b.note||''}">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('nurseryForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('nursery_batches', {
+      ...b,
+      plot_id: plotId,
+      variety: document.getElementById('nb_variety').value,
+      sowing_date: document.getElementById('nb_sowing').value,
+      quantity_sown: document.getElementById('nb_qty_sown').value ? Number(document.getElementById('nb_qty_sown').value) : null,
+      germinated_count: document.getElementById('nb_germinated').value ? Number(document.getElementById('nb_germinated').value) : null,
+      available_quantity: document.getElementById('nb_available').value ? Number(document.getElementById('nb_available').value) : null,
+      ready_date: document.getElementById('nb_ready').value || null,
+      status: document.getElementById('nb_status').value,
+      note: document.getElementById('nb_note').value || null,
+    }, !existing);
+    openPlotDetail(plotId);
+    renderAll();
+  });
+}
+
+async function loadPlotWeather(p){
+  const box = document.getElementById('weatherBox-'+p.id);
+  if(!box) return;
+  if(!navigator.onLine){ box.textContent = 'Météo indisponible hors ligne.'; return; }
+  try{
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${p.gps_lat}&longitude=${p.gps_lng}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=auto&forecast_days=5`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const days = data.daily.time.map((d,i)=>({
+      date: d, max: data.daily.temperature_2m_max[i], min: data.daily.temperature_2m_min[i], rain: data.daily.precipitation_sum[i]
+    }));
+    box.innerHTML = `<div style="display:flex;gap:8px;overflow-x:auto;">${days.map(d=>`
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;min-width:74px;text-align:center;">
+        <div class="small-muted">${d.date.slice(5)}</div>
+        <div style="font-weight:600;">${Math.round(d.max)}°/${Math.round(d.min)}°</div>
+        <div class="small-muted">${d.rain>0?'🌧️ '+d.rain+'mm':'☀️'}</div>
+      </div>`).join('')}</div>`;
+  }catch(e){
+    box.textContent = 'Météo indisponible pour le moment.';
+  }
+}
+
+function renderHarvestBlock(h){
+  const yieldTha = (h.area_harvested_ha && h.weight_kg) ? (h.weight_kg/1000/h.area_harvested_ha).toFixed(2) : null;
+  return `<div class="card" style="margin-top:8px;padding:10px 12px;">
+    <div style="display:flex;justify-content:space-between;">
+      <div>${h.harvest_date} — ${h.crop_name?(h.crop_name+' — '):''}${h.weight_kg} kg${h.area_harvested_ha?(' sur '+h.area_harvested_ha+' ha'):''}</div>
+      ${yieldTha?`<div class="small-muted">${yieldTha} t/ha</div>`:''}
+    </div>
+    <button class="btn secondary" style="margin-top:6px;padding:6px 10px;font-size:.78rem;" onclick="openPostHarvestForm('${h.id}')">+ Suivi post-récolte</button>
+    <div id="storage-${h.id}" class="small-muted"></div>
+  </div>`;
+}
+
+function openCropOperationForm(plotId){
+  idbAll('stock_items').then(items=>{
+    const relevantItems = items.filter(i=>['engrais','phytosanitaire','semence'].includes(i.category));
+    openModal(`
+      <div class="modal-header"><h3>Nouvelle opération</h3><button onclick="closeModal()">✕</button></div>
+      <form id="opForm">
+        <label>Type d'opération</label>
+        <select id="op_type">
+          ${Object.entries(CROP_OP_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+        </select>
+        <label style="margin-top:8px;">Date</label><input type="date" id="op_date" value="${new Date().toISOString().slice(0,10)}">
+        <div class="field-row" style="margin-top:8px;">
+          <div><label>Produit utilisé</label><input id="op_product" placeholder="ex: NPK 15-15-15, glyphosate..."></div>
+          <div><label>Quantité utilisée</label><input type="number" step="0.01" id="op_qty"></div>
+        </div>
+        ${relevantItems.length ? `
+        <label style="margin-top:8px;">Déduire du stock (facultatif)</label>
+        <select id="op_stock_item">
+          <option value="">— ne pas déduire —</option>
+          ${relevantItems.map(i=>`<option value="${i.id}">${i.name} (${i.quantity_on_hand} ${i.unit||''})</option>`).join('')}
+        </select>` : '<div class="small-muted" style="margin-top:6px;">Aucun engrais/produit phytosanitaire/semence en stock — ajoute-en un dans l\'onglet Stocks pour activer la déduction automatique.</div>'}
+        <label style="margin-top:8px;">Intrants utilisés (facultatif, en plus)</label><input id="op_inputs" placeholder="autres détails libres...">
+        <label style="margin-top:8px;">Coût (FCFA)</label><input type="number" id="op_cost">
+        <label style="margin-top:8px;">Note</label><input id="op_note">
+        <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      </form>
+    `);
+    document.getElementById('opForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const qty = document.getElementById('op_qty').value ? Number(document.getElementById('op_qty').value) : null;
+      const productName = document.getElementById('op_product').value || null;
+      await saveRecord('crop_operations', {
+        plot_id: plotId,
+        operation_type: document.getElementById('op_type').value,
+        operation_date: document.getElementById('op_date').value,
+        product_name: productName,
+        quantity_used: qty,
+        inputs_used: document.getElementById('op_inputs').value || null,
+        cost_fcfa: document.getElementById('op_cost').value ? Number(document.getElementById('op_cost').value) : null,
+        note: document.getElementById('op_note').value || null,
+      }, true);
+      const stockItemId = document.getElementById('op_stock_item') ? document.getElementById('op_stock_item').value : '';
+      if(stockItemId && qty) await deductFromStock(stockItemId, qty, `Traitement agro : ${productName||''}`.trim());
+      openPlotDetail(plotId);
+      renderAll();
+    });
+  });
+}
+
+function openCropObservationForm(plotId){
+  openModal(`
+    <div class="modal-header"><h3>Nouvelle observation</h3><button onclick="closeModal()">✕</button></div>
+    <form id="obsForm">
+      <label>Date</label><input type="date" id="ob_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Type de problème (facultatif)</label>
+      <select id="ob_issue">
+        <option value="">—</option>
+        ${Object.entries(OBS_ISSUE_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+      </select>
+      <label style="margin-top:8px;">Note</label><input id="ob_note">
+      ${photoFieldHTML('ob_photo', null)}
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  const obsPhotoField = wirePhotoField('ob_photo', null);
+  document.getElementById('obsForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('crop_observations', {
+      plot_id: plotId,
+      obs_date: document.getElementById('ob_date').value,
+      issue_type: document.getElementById('ob_issue').value || null,
+      note: document.getElementById('ob_note').value || null,
+      photo_url: obsPhotoField.getValue(),
+    }, true);
+    openPlotDetail(plotId);
+    renderAll();
+  });
+}
+
+function openHarvestForm(plotId){
+  openModal(`
+    <div class="modal-header"><h3>Nouvelle récolte</h3><button onclick="closeModal()">✕</button></div>
+    <form id="harvestForm">
+      <label>Date de récolte</label><input type="date" id="hv_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Culture récoltée</label><input id="hv_crop" placeholder="ex: Maïs, Tomate...">
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Superficie moissonnée (ha)</label><input type="number" step="0.01" id="hv_area"></div>
+        <div><label>Poids total récolté (kg)</label><input type="number" id="hv_weight" required></div>
+      </div>
+      <label style="margin-top:8px;">Note</label><input id="hv_note">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('harvestForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('harvests', {
+      plot_id: plotId,
+      harvest_date: document.getElementById('hv_date').value,
+      crop_name: document.getElementById('hv_crop').value || null,
+      area_harvested_ha: document.getElementById('hv_area').value ? Number(document.getElementById('hv_area').value) : null,
+      weight_kg: Number(document.getElementById('hv_weight').value),
+      note: document.getElementById('hv_note').value || null,
+    }, true);
+    openPlotDetail(plotId);
+    renderAll();
+  });
+}
+
+function openPostHarvestForm(harvestId){
+  openModal(`
+    <div class="modal-header"><h3>Suivi post-récolte</h3><button onclick="closeModal()">✕</button></div>
+    <form id="storageForm">
+      <label>Lieu de stockage</label><input id="st_location" placeholder="silo, grenier...">
+      <label style="margin-top:8px;">État de séchage</label>
+      <select id="st_drying">
+        <option value="en_sechage">En séchage</option>
+        <option value="seche">Séché</option>
+        <option value="stocke">Stocké</option>
+      </select>
+      <label style="margin-top:8px;">Pertes (kg)</label><input type="number" id="st_loss" value="0">
+      <label style="margin-top:8px;">Note</label><input id="st_note">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('storageForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const rec = await saveRecord('post_harvest_storage', {
+      harvest_id: harvestId,
+      storage_location: document.getElementById('st_location').value || null,
+      drying_status: document.getElementById('st_drying').value,
+      loss_kg: Number(document.getElementById('st_loss').value || 0),
+      note: document.getElementById('st_note').value || null,
+    }, true);
+    closeModal();
+    renderAll();
+  });
+}
+
+/* =========================================================
+   STOCKS & INTRANTS — aliments, médicaments, engrais, semences, matériel
+   ========================================================= */
+const STOCK_CATEGORY_LABELS = { aliment:'Aliment', medicament:'Médicament/vaccin', engrais:'Engrais', semence:'Semence', materiel:'Matériel', phytosanitaire:'Phytosanitaire' };
+
+function daysUntil(dateStr){
+  if(!dateStr) return null;
+  return Math.floor((new Date(dateStr).getTime() - Date.now())/86400000);
+}
+
+document.getElementById('filterStockCategory').addEventListener('change', renderStockList);
+document.getElementById('searchStock').addEventListener('input', renderStockList);
+
+async function renderStockList(){
+  const items = await idbAll('stock_items');
+  const filter = document.getElementById('filterStockCategory').value;
+  const query = normText(document.getElementById('searchStock').value.trim());
+  const box = document.getElementById('stockList');
+  if(!box) return;
+
+  let filtered = filter ? items.filter(i=>i.category===filter) : items;
+  if(query) filtered = filtered.filter(i=>normText(i.name).includes(query));
+  filtered.sort((a,b)=>a.name.localeCompare(b.name));
+
+  if(filtered.length === 0){
+    box.innerHTML = '<div class="empty">Aucun article en stock. Touche + pour en ajouter un.</div>';
+    return;
+  }
+  box.innerHTML = filtered.map(i=>{
+    const low = i.alert_threshold != null && i.quantity_on_hand <= i.alert_threshold;
+    const expDays = daysUntil(i.expiry_date);
+    const expSoon = expDays != null && expDays <= 30;
+    let badge = '<span class="badge actif">OK</span>';
+    if(low) badge = '<span class="badge decede">stock bas</span>';
+    else if(expSoon) badge = `<span class="badge partielle">péremption ${expDays<0?'dépassée':expDays+'j'}</span>`;
+    return `<div class="list-item" onclick="openStockItemDetail('${i.id}')">
+      <div><div>${escapeHtml(i.name)}</div><div class="meta">${STOCK_CATEGORY_LABELS[i.category]} · ${i.quantity_on_hand} ${i.unit||''}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${badge}
+        <button onclick="event.stopPropagation(); removeStockItem('${i.id}')" title="Supprimer" style="background:none;border:none;color:var(--red);font-size:1.1rem;padding:4px;cursor:pointer;">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openStockItemForm(existing){
+  const i = existing || {};
+  openModal(`
+    <div class="modal-header"><h3>${existing?'Modifier':'Nouvel'} article</h3><button onclick="closeModal()">✕</button></div>
+    <form id="stockForm">
+      <label>Catégorie</label>
+      <select id="si_category">
+        ${Object.entries(STOCK_CATEGORY_LABELS).map(([k,v])=>`<option value="${k}" ${i.category===k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <label style="margin-top:8px;">Nom</label><input id="si_name" value="${i.name||''}" required>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Unité</label><input id="si_unit" value="${i.unit||''}" placeholder="kg, sac, unité..."></div>
+        <div><label>Quantité en stock</label><input type="number" step="0.1" id="si_qty" value="${i.quantity_on_hand||0}"></div>
+      </div>
+      <div class="field-row" style="margin-top:8px;">
+        <div><label>Seuil d'alerte</label><input type="number" step="0.1" id="si_threshold" value="${i.alert_threshold||''}"></div>
+        <div><label>Date de péremption</label><input type="date" id="si_expiry" value="${i.expiry_date||''}"></div>
+      </div>
+      <div class="field-row single" id="equipStatusWrap" style="display:${i.category==='materiel'?'block':'none'};margin-top:8px;">
+        <div><label>État du matériel</label>
+          <select id="si_equip_status">
+            <option value="bon_etat" ${i.equipment_status==='bon_etat'?'selected':''}>Bon état</option>
+            <option value="a_reviser" ${i.equipment_status==='a_reviser'?'selected':''}>À réviser</option>
+            <option value="hors_service" ${i.equipment_status==='hors_service'?'selected':''}>Hors service</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+      ${existing ?'<button type="button" class="btn danger block" style="margin-top:8px;" onclick="removeStockItem(\''+existing.id+'\')">Supprimer</button>':''}
+    </form>
+  `);
+  document.getElementById('si_category').addEventListener('change', (e)=>{
+    document.getElementById('equipStatusWrap').style.display = e.target.value==='materiel' ? 'block' : 'none';
+  });
+  document.getElementById('stockForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const category = document.getElementById('si_category').value;
+    await saveRecord('stock_items', {
+      ...i,
+      category,
+      name: document.getElementById('si_name').value,
+      unit: document.getElementById('si_unit').value || null,
+      quantity_on_hand: Number(document.getElementById('si_qty').value || 0),
+      alert_threshold: document.getElementById('si_threshold').value ? Number(document.getElementById('si_threshold').value) : null,
+      expiry_date: document.getElementById('si_expiry').value || null,
+      equipment_status: category==='materiel' ? document.getElementById('si_equip_status').value : null,
+    }, !existing);
+    closeModal();
+    renderAll();
+  });
+}
+
+async function removeStockItem(id){
+  if(!confirm('Supprimer cet article de stock ?')) return;
+  await deleteRecord('stock_items', id);
+  closeModal();
+  renderAll();
+}
+
+async function openStockItemDetail(id){
+  const items = await idbAll('stock_items');
+  const i = items.find(x=>x.id===id);
+  if(!i) return;
+
+  if(i.category === 'materiel'){
+    const maint = (await idbAll('equipment_maintenance')).filter(m=>m.item_id===id).sort((a,b)=>b.maintenance_date.localeCompare(a.maintenance_date));
+    openModal(`
+      <div class="modal-header"><h3>${i.name}</h3><button onclick="closeModal()">✕</button></div>
+      <div class="small-muted">${STOCK_CATEGORY_LABELS[i.category]} · état : ${i.equipment_status||'—'}</div>
+      <h3 style="margin-top:16px;font-size:.95rem;">🔧 Historique de maintenance</h3>
+      <table class="weigh-table">
+        <tr><th>Date</th><th>Description</th><th>Prochaine échéance</th></tr>
+        ${maint.map(m=>`<tr><td>${m.maintenance_date}</td><td>${m.description||'—'}</td><td>${m.next_maintenance_date||'—'}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucune maintenance enregistrée</td></tr>'}
+      </table>
+      <button class="btn secondary" style="margin-top:8px;" onclick="openMaintenanceForm('${i.id}')">+ Maintenance</button>
+      <hr class="divider">
+      <button class="btn block" onclick='openStockItemForm(${jsonAttr(i)})'>Modifier l'article</button>
+    `);
+    return;
+  }
+
+  const moves = (await idbAll('stock_movements')).filter(m=>m.item_id===id).sort((a,b)=>b.movement_date.localeCompare(a.movement_date));
+  openModal(`
+    <div class="modal-header"><h3>${i.name}</h3><button onclick="closeModal()">✕</button></div>
+    <div class="kpi-grid">
+      <div class="kpi ${i.alert_threshold!=null && i.quantity_on_hand<=i.alert_threshold?'warn':''}"><div class="val">${i.quantity_on_hand} ${i.unit||''}</div><div class="label">En stock</div></div>
+      <div class="kpi"><div class="val">${i.alert_threshold ?? '—'}</div><div class="label">Seuil d'alerte</div></div>
+    </div>
+    ${i.expiry_date?`<div class="small-muted">Péremption : ${i.expiry_date}</div>`:''}
+    <h3 style="margin-top:16px;font-size:.95rem;">📦 Mouvements</h3>
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Type</th><th>Quantité</th></tr>
+      ${moves.slice(0,12).map(m=>`<tr><td>${m.movement_date}</td><td>${m.movement_type==='entree'?'Entrée':'Sortie'}</td><td>${m.quantity} ${i.unit||''}</td></tr>`).join('') || '<tr><td colspan="3" class="small-muted">Aucun mouvement</td></tr>'}
+    </table>
+    <div class="field-row" style="margin-top:8px;">
+      <button class="btn secondary" onclick="openMovementForm('${i.id}','entree')">+ Entrée</button>
+      <button class="btn secondary" onclick="openMovementForm('${i.id}','sortie')">− Sortie</button>
+    </div>
+    <hr class="divider">
+    <button class="btn block" onclick='openStockItemForm(${jsonAttr(i)})'>Modifier l'article</button>
+  `);
+}
+
+function openMovementForm(itemId, type){
+  openModal(`
+    <div class="modal-header"><h3>${type==='entree'?'Nouvelle entrée':'Nouvelle sortie'}</h3><button onclick="closeModal()">✕</button></div>
+    <form id="moveForm">
+      <label>Date</label><input type="date" id="mv_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Quantité</label><input type="number" step="0.1" id="mv_qty" required>
+      <label style="margin-top:8px;">Note</label><input id="mv_note">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('moveForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const qty = Number(document.getElementById('mv_qty').value);
+    await saveRecord('stock_movements', {
+      item_id: itemId,
+      movement_type: type,
+      quantity: qty,
+      movement_date: document.getElementById('mv_date').value,
+      note: document.getElementById('mv_note').value || null,
+    }, true);
+    // Affichage local immédiat ; le trigger côté base recalcule la valeur exacte à la synchro
+    // (évite qu'une écriture concurrente d'un collègue ne soit écrasée)
+    const items = await idbAll('stock_items');
+    const item = items.find(x=>x.id===itemId);
+    if(item){
+      item.quantity_on_hand = Number(item.quantity_on_hand||0) + (type==='entree' ? qty : -qty);
+      await updateLocalOnly('stock_items', item);
+    }
+    openStockItemDetail(itemId);
+    renderAll();
+  });
+}
+
+function openMaintenanceForm(itemId){
+  openModal(`
+    <div class="modal-header"><h3>Nouvelle maintenance</h3><button onclick="closeModal()">✕</button></div>
+    <form id="maintForm">
+      <label>Date</label><input type="date" id="mt_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Description</label><input id="mt_desc">
+      <label style="margin-top:8px;">Prochaine échéance</label><input type="date" id="mt_next">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('maintForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('equipment_maintenance', {
+      item_id: itemId,
+      maintenance_date: document.getElementById('mt_date').value,
+      description: document.getElementById('mt_desc').value || null,
+      next_maintenance_date: document.getElementById('mt_next').value || null,
+    }, true);
+    openStockItemDetail(itemId);
+    renderAll();
+  });
+}
+
+/* =========================================================
+   EXPORTS — PDF / Excel
+   ========================================================= */
+async function exportSalesPDF(){
+  const sales = await idbAll('sales');
+  const clients = await idbAll('clients');
+  const clientMap = Object.fromEntries(clients.map(c=>[c.id,c]));
+  const logo = await getLogoDataUrl();
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  let headerX = 14;
+  if(logo){
+    try{ doc.addImage(logo, 'PNG', 14, 10, 16, 16); headerX = 34; }catch(e){ /* logo illisible, on continue sans */ }
+  }
+  doc.setFontSize(14); doc.text('Ferme Condé Agro-Pastorale', headerX, 16);
+  doc.setFontSize(9); doc.text('Ventes & créances — Généré le '+new Date().toLocaleDateString('fr-FR'), headerX, 22);
+  let y = 32;
+  doc.setFontSize(10);
+  doc.text('Date', 14, y); doc.text('Client', 44, y); doc.text('Poids', 94, y); doc.text('Total', 118, y); doc.text('Payé', 148, y); doc.text('Statut', 174, y);
+  y += 6;
+  sales.sort((a,b)=>(b.sale_date||'').localeCompare(a.sale_date||'')).forEach(s=>{
+    if(y > 280){ doc.addPage(); y = 20; }
+    const c = clientMap[s.client_id];
+    doc.text(String(s.sale_date||''), 14, y);
+    doc.text(String(c?c.name:'—').slice(0,18), 44, y);
+    doc.text(`${s.weight_kg} kg`, 94, y);
+    doc.text(pdfFcfa(s.total_price_fcfa), 118, y);
+    doc.text(pdfFcfa(s.amount_paid_fcfa||0), 148, y);
+    doc.text(String(s.status), 174, y);
+    y += 6;
+  });
+  doc.save(`ventes-creances-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+async function exportSalesExcel(){
+  const sales = await idbAll('sales');
+  const clients = await idbAll('clients');
+  const clientMap = Object.fromEntries(clients.map(c=>[c.id,c]));
+  const rows = sales.map(s=>({
+    Date: s.sale_date,
+    Client: clientMap[s.client_id]?clientMap[s.client_id].name:'',
+    'Poids (kg)': s.weight_kg,
+    'Total (FCFA)': s.total_price_fcfa,
+    'Payé (FCFA)': s.amount_paid_fcfa,
+    'Restant (FCFA)': s.total_price_fcfa - s.amount_paid_fcfa,
+    Statut: s.status,
+    Échéance: s.due_date || ''
+  }));
+  // La bibliothèque Excel gratuite utilisée ici ne peut pas intégrer d'image (logo) —
+  // seule une bibliothèque payante le permettrait. On met le nom de l'entreprise
+  // en en-tête de la feuille à la place, pour au moins l'identifier clairement.
+  const ws = XLSX.utils.json_to_sheet(rows, {origin:'A3'});
+  XLSX.utils.sheet_add_aoa(ws, [[COMPANY_NAME], [`Ventes & créances — généré le ${new Date().toLocaleDateString('fr-FR')}`]], {origin:'A1'});
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Ventes');
+  XLSX.writeFile(wb, `ventes-creances-${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+async function openActivityLog(){
+  const log = await idbAll('activity_log');
+  log.sort((a,b)=>(b.performed_at||'').localeCompare(a.performed_at||''));
+  const ACTION_LABELS = {creation:'➕ Création', modification:'✏️ Modification', suppression:'🗑️ Suppression'};
+  const ACTION_COLORS = {creation:'var(--green)', modification:'var(--amber)', suppression:'var(--red)'};
+
+  openModal(`
+    <div class="modal-header"><h3>Journal d'activité</h3><button onclick="closeModal()">✕</button></div>
+    <div class="small-muted" style="margin-bottom:10px;">Chaque création, modification ou suppression est horodatée automatiquement (date et heure), avec l'auteur si connecté.</div>
+    <div id="activityLogList">
+      ${log.length ? log.slice(0,150).map(entry=>{
+        const d = new Date(entry.performed_at);
+        const dateStr = isNaN(d) ? entry.performed_at : d.toLocaleDateString('fr-FR') + ' à ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+        return `<div class="list-item" style="cursor:default;">
+          <div>
+            <div style="color:${ACTION_COLORS[entry.action]||'inherit'};font-weight:600;font-size:.85rem;">${ACTION_LABELS[entry.action]||entry.action}</div>
+            <div style="font-size:.85rem;">${entry.record_label||''}</div>
+            <div class="meta">${dateStr}${entry.performed_by_email?(' · '+entry.performed_by_email):''}</div>
+          </div>
+        </div>`;
+      }).join('') : '<div class="empty">Aucune activité enregistrée pour le moment.</div>'}
+    </div>
+  `);
+}
+
+async function exportDashboardPDF(){
+  const sales = await idbAll('sales');
+  const animals = await idbAll('animals');
+  const plots = await idbAll('plots');
+  const totalCA = sales.reduce((s,x)=>s+Number(x.total_price_fcfa),0);
+  const totalCreances = sales.reduce((s,x)=>s+(Number(x.total_price_fcfa)-Number(x.amount_paid_fcfa||0)),0);
+  const logo = await getLogoDataUrl();
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF();
+  let headerX = 14;
+  if(logo){
+    try{ doc.addImage(logo, 'PNG', 14, 8, 18, 18); headerX = 36; }catch(e){ /* logo illisible, on continue sans */ }
+  }
+  doc.setFontSize(16); doc.text('Ferme Condé Agro-Pastorale', headerX, 16);
+  doc.setFontSize(12); doc.text('Bilan', headerX, 24);
+  doc.setFontSize(10); doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, headerX, 31);
+  let y = 45;
+  const lines = [
+    [`Chiffre d'affaires total`, pdfFcfa(totalCA)],
+    [`Créances impayées`, pdfFcfa(totalCreances)],
+    [`Trésorerie réelle`, pdfFcfa(totalCA-totalCreances)],
+    [`Animaux actifs`, `${animals.filter(a=>a.status==='actif').length}`],
+    [`Surface active`, `${plots.filter(p=>p.status==='active').reduce((s,p)=>s+Number(p.area_ha||0),0)} ha`],
+  ];
+  doc.setFontSize(12);
+  lines.forEach(([label,val])=>{ doc.text(label, 14, y); doc.text(val, 120, y); y+=10; });
+  doc.save(`bilan-${new Date().toISOString().slice(0,10)}.pdf`);
+}
+
+/* =========================================================
+   NOTIFICATIONS — rappels locaux (app ouverte / arrière-plan récent)
+   Remarque : ceci notifie tant que l'app tourne dans le navigateur.
+   Pour des notifications même app fermée, il faudrait un service
+   push serveur (VAPID + tâche planifiée côté Supabase) — voir README.
+   ========================================================= */
+let notifiedAlerts = new Set();
+
+function updateNotifBtn(){
+  const btn = document.getElementById('notifBtn');
+  if(!btn) return;
+  if(!('Notification' in window)){ btn.style.display='none'; return; }
+  if(Notification.permission === 'granted'){ btn.textContent = '🔔 Notifications activées'; btn.disabled = true; }
+  else { btn.textContent = '🔔 Activer les notifications de rappel'; btn.disabled = false; }
+}
+
+async function enableNotifications(){
+  if(!('Notification' in window)) return alert('Notifications non supportées sur cet appareil.');
+  const perm = await Notification.requestPermission();
+  updateNotifBtn();
+  if(perm !== 'granted') alert('Autorisation refusée — active-la depuis les réglages du navigateur si tu changes d\'avis.');
+}
+
+function notifyUrgentAlerts(alerts){
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  alerts.filter(a=>a.level==='red').forEach(a=>{
+    if(!notifiedAlerts.has(a.text)){
+      notifiedAlerts.add(a.text);
+      new Notification('Agro-Pastorale — Alerte', {body: a.text});
+    }
+  });
+}
+
+/* =========================================================
+   CLIENTS
+   ========================================================= */
+async function renderClientsList(){
+  const clients = await idbAll('clients');
+  const box = document.getElementById('clientsList');
+  if(clients.length===0){ box.innerHTML = '<div class="empty">Aucun client. Touche + pour en ajouter un.</div>'; return; }
+  box.innerHTML = clients.map(c=>`
+    <div class="list-item" onclick='openClientForm(${jsonAttr(c)})'>
+      <div><div>${c.name}</div><div class="meta">${c.phone||''}</div></div>
+    </div>`).join('');
+}
+function openClientForm(existing){
+  const c = existing || {};
+  openModal(`
+    <div class="modal-header"><h3>${existing?'Modifier':'Nouveau'} client</h3><button onclick="closeModal()">✕</button></div>
+    <form id="clientForm">
+      <label>Nom</label><input id="c_name" value="${c.name||''}" required>
+      <label style="margin-top:8px;">Téléphone</label><input id="c_phone" value="${c.phone||''}">
+      <label style="margin-top:8px;">Adresse</label><input id="c_address" value="${c.address||''}">
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('clientForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    await saveRecord('clients', {
+      ...c,
+      name: document.getElementById('c_name').value,
+      phone: document.getElementById('c_phone').value || null,
+      address: document.getElementById('c_address').value || null,
+    }, !existing);
+    closeModal();
+    renderAll();
+  });
+}
+
+/* =========================================================
+   VENTES / CRÉANCES — le cœur économique
+   ========================================================= */
+const PAYMENT_METHOD_LABELS = { especes:'Espèces', cheque:'Chèque', virement:'Virement', mobile_money:'Mobile Money' };
+
+function daysLate(dueDate){
+  if(!dueDate) return 0;
+  const diff = (Date.now() - new Date(dueDate).getTime())/86400000;
+  return Math.floor(diff);
+}
+
+async function renderSalesList(){
+  const sales = await idbAll('sales');
+  const clients = await idbAll('clients');
+  const clientMap = Object.fromEntries(clients.map(c=>[c.id,c]));
+  const box = document.getElementById('salesList');
+  if(sales.length===0){ box.innerHTML = '<div class="empty">Aucune vente enregistrée. Touche + pour en ajouter une.</div>'; return; }
+
+  sales.sort((a,b)=>(b.sale_date||'').localeCompare(a.sale_date||''));
+  box.innerHTML = sales.map(s=>{
+    const client = clientMap[s.client_id];
+    const pricePerKg = s.weight_kg ? Math.round(s.total_price_fcfa/s.weight_kg) : 0;
+    const late = s.status !== 'payee' ? daysLate(s.due_date) : 0;
+    let statusLabel = s.status;
+    if(s.status==='impayee' && late>30) statusLabel = 'impayée >30j';
+    return `<div class="list-item" onclick='openSaleDetail(${jsonAttr(s)})'>
+      <div>
+        <div>${client?client.name:'Client'} — ${s.weight_kg} kg</div>
+        <div class="meta">${fmtMoney(s.total_price_fcfa)} · ${pricePerKg.toLocaleString('fr-FR')} F/kg ${s.due_date?(' · échéance '+s.due_date):''}</div>
+      </div>
+      <span class="badge ${s.status}">${statusLabel}</span>
+    </div>`;
+  }).join('');
+}
+
+function openSaleForm(){
+  Promise.all([idbAll('clients'), idbAll('animals')]).then(([clients, animals])=>{
+    openModal(`
+      <div class="modal-header"><h3>Nouvelle vente</h3><button onclick="closeModal()">✕</button></div>
+      <form id="saleForm">
+        <label>Client</label>
+        <select id="s_client" required>
+          <option value="">— choisir —</option>
+          ${clients.map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+        </select>
+        <div class="small-muted">Pas encore de client ? Ajoute-le d'abord dans l'onglet Clients.</div>
+
+        <label style="margin-top:8px;">Animal / lot concerné (facultatif)</label>
+        <select id="s_animal">
+          <option value="">—</option>
+          ${animals.map(a=>`<option value="${a.id}">${a.name||a.lot_label||a.tag_number}</option>`).join('')}
+        </select>
+
+        <div class="field-row" style="margin-top:8px;">
+          <div><label>Poids vendu (kg)</label><input type="number" step="0.1" id="s_weight" required oninput="updatePricePreview()"></div>
+          <div><label>Prix total (FCFA)</label><input type="number" id="s_price" required oninput="updatePricePreview()"></div>
+        </div>
+        <div class="small-muted" id="pricePreview">Prix au kilo : —</div>
+
+        <div class="field-row" style="margin-top:10px;">
+          <div><label>Date de vente</label><input type="date" id="s_date" value="${new Date().toISOString().slice(0,10)}"></div>
+          <div style="display:flex;align-items:flex-end;gap:6px;">
+            <label style="margin:0;"><input type="checkbox" id="s_credit" onchange="document.getElementById('s_due_wrap').style.display=this.checked?'block':'none'"> Vente à crédit (non soldée)</label>
+          </div>
+        </div>
+        <div id="s_due_wrap" style="display:none;margin-top:8px;">
+          <label>Échéance de paiement</label><input type="date" id="s_due">
+        </div>
+        <div id="s_method_wrap" style="margin-top:8px;">
+          <label>Mode de paiement</label>
+          <select id="s_method">
+            ${Object.entries(PAYMENT_METHOD_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+          </select>
+        </div>
+
+        <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer la vente</button>
+      </form>
+    `);
+    document.getElementById('s_credit').addEventListener('change', (e)=>{
+      document.getElementById('s_method_wrap').style.display = e.target.checked ? 'none' : 'block';
+    });
+    document.getElementById('saleForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const isCredit = document.getElementById('s_credit').checked;
+      const total = Number(document.getElementById('s_price').value);
+      await saveRecord('sales', {
+        client_id: document.getElementById('s_client').value,
+        animal_id: document.getElementById('s_animal').value || null,
+        weight_kg: Number(document.getElementById('s_weight').value),
+        total_price_fcfa: total,
+        sale_date: document.getElementById('s_date').value,
+        is_credit: isCredit,
+        due_date: isCredit ? document.getElementById('s_due').value : null,
+        amount_paid_fcfa: isCredit ? 0 : total,
+        status: isCredit ? 'impayee' : 'payee',
+        payment_method: isCredit ? null : document.getElementById('s_method').value,
+      }, true);
+      closeModal();
+      renderAll();
+    });
+  });
+}
+function updatePricePreview(){
+  const w = Number(document.getElementById('s_weight').value);
+  const p = Number(document.getElementById('s_price').value);
+  const el = document.getElementById('pricePreview');
+  el.textContent = (w>0) ? `Prix au kilo : ${Math.round(p/w).toLocaleString('fr-FR')} FCFA/kg` : 'Prix au kilo : —';
+}
+
+async function openSaleDetail(s){
+  const clients = await idbAll('clients');
+  const client = clients.find(c=>c.id===s.client_id);
+  const payments = (await idbAll('sale_payments')).filter(p=>p.sale_id===s.id);
+  const remaining = s.total_price_fcfa - s.amount_paid_fcfa;
+  const late = daysLate(s.due_date);
+
+  openModal(`
+    <div class="modal-header"><h3>Vente — ${client?client.name:''}</h3><button onclick="closeModal()">✕</button></div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="val">${fmtMoney(s.total_price_fcfa)}</div><div class="label">Total</div></div>
+      <div class="kpi ${remaining>0?'warn':''}"><div class="val">${fmtMoney(remaining)}</div><div class="label">Restant dû</div></div>
+    </div>
+    ${s.status!=='payee' && s.due_date ? `<div class="alert ${late>30?'':'amber'}">${late>0?`En retard de ${late} jour(s) (échéance ${s.due_date})`:`Échéance le ${s.due_date}`}</div>`:''}
+
+    <h3 style="font-size:.95rem;margin-top:12px;">Paiements / acomptes</h3>
+    <table class="weigh-table">
+      <tr><th>Date</th><th>Montant</th></tr>
+      ${payments.map(p=>`<tr><td>${p.paid_at}</td><td>${fmtMoney(p.amount_fcfa)}</td></tr>`).join('') || '<tr><td colspan="2" class="small-muted">Aucun paiement</td></tr>'}
+    </table>
+    ${remaining>0?`<button class="btn secondary block" style="margin-top:10px;" onclick="openPaymentForm('${s.id}')">+ Enregistrer un paiement</button>`:''}
+
+    <div class="field-row" style="margin-top:10px;">
+      <button class="btn secondary" onclick='generateReceiptPDF(${jsonAttr(s)}, ${jsonAttr(client||{})})'>🧾 Reçu PDF</button>
+      ${remaining>0 && client && client.phone ? `<button class="btn secondary" onclick='relanceWhatsApp(${jsonAttr(s)}, ${jsonAttr(client)}, ${remaining})'>💬 Relancer (WhatsApp)</button>` : ''}
+    </div>
+  `);
+}
+
+let cachedLogoDataUrl = null;
+async function getLogoDataUrl(){
+  if(cachedLogoDataUrl !== null) return cachedLogoDataUrl; // '' si l'essai précédent a échoué
+  try{
+    const res = await fetch(COMPANY_LOGO_PATH);
+    const blob = await res.blob();
+    cachedLogoDataUrl = await blobToDataURL(blob);
+  }catch(e){
+    cachedLogoDataUrl = ''; // pas de logo trouvé — la facture reste correcte sans
+  }
+  return cachedLogoDataUrl;
+}
+
+function receiptNumber(s){
+  return `REC-${(s.sale_date||'').replace(/-/g,'')}-${s.id.slice(0,6).toUpperCase()}`;
+}
+
+async function generateReceiptPDF(s, client){
+  const [animals, species, payments] = await Promise.all([
+    idbAll('animals'), idbAll('species'), idbAll('sale_payments')
+  ]);
+  const animal = s.animal_id ? animals.find(a=>a.id===s.animal_id) : null;
+  const animalSpecies = animal ? species.find(sp=>sp.id===animal.species_id) : null;
+  const salePayments = payments.filter(p=>p.sale_id===s.id);
+  const logo = await getLogoDataUrl();
+
+  const {jsPDF} = window.jspdf;
+  // Format compact adapté à une petite imprimante (ticket 80mm de large)
+  const pageWidth = 80;
+  const doc = new jsPDF({unit:'mm', format:[pageWidth, 250]});
+  const marginX = 5;
+  const contentWidth = pageWidth - marginX*2;
+  let y = 8;
+
+  if(logo){
+    try{ doc.addImage(logo, 'PNG', pageWidth/2-10, y, 20, 20); y += 24; }catch(e){ /* logo illisible, on continue sans */ }
+  }
+
+  doc.setFont(undefined,'bold'); doc.setFontSize(11);
+  doc.text(COMPANY_NAME, pageWidth/2, y, {align:'center', maxWidth:contentWidth}); y += 6;
+
+  doc.setFont(undefined,'bold'); doc.setFontSize(10);
+  doc.text('REÇU DE VENTE', pageWidth/2, y, {align:'center'}); y += 5;
+  doc.setFont(undefined,'normal'); doc.setFontSize(8);
+  doc.text('N° '+receiptNumber(s), marginX, y); y += 4;
+  doc.text('Date : '+s.sale_date, marginX, y); y += 5;
+  doc.setLineWidth(0.2); doc.line(marginX, y, pageWidth-marginX, y); y += 5;
+
+  doc.setFont(undefined,'bold'); doc.text('Client', marginX, y); y += 4;
+  doc.setFont(undefined,'normal');
+  doc.text(client.name||'—', marginX, y); y += 4;
+  if(client.phone){ doc.text('Tél : '+client.phone, marginX, y); y += 4; }
+  if(client.address){
+    const addrLines = doc.splitTextToSize(client.address, contentWidth);
+    doc.text(addrLines, marginX, y); y += 4*addrLines.length;
+  }
+  y += 1;
+
+  doc.line(marginX, y, pageWidth-marginX, y); y += 5;
+  doc.setFont(undefined,'bold'); doc.text('Article vendu', marginX, y); y += 4;
+  doc.setFont(undefined,'normal');
+  if(animal){
+    if(animalSpecies){ doc.text('Espèce : '+animalSpecies.label, marginX, y); y += 4; }
+    const label = animal.name || animal.lot_label || null;
+    if(label){ doc.text((animalSpecies && animalSpecies.is_lot_based ? 'Lot : ' : 'Nom : ')+label, marginX, y); y += 4; }
+    if(animal.breed){ doc.text('Race : '+animal.breed, marginX, y); y += 4; }
+    if(animal.tag_number){ doc.text('N° oreille/puce : '+animal.tag_number, marginX, y); y += 4; }
+  }
+  doc.text('Poids vendu : '+s.weight_kg+' kg', marginX, y); y += 4;
+  const pricePerKg = s.weight_kg ? Math.round(s.total_price_fcfa/s.weight_kg) : 0;
+  doc.text('Prix / kg : '+pdfFcfa(pricePerKg), marginX, y); y += 5;
+
+  doc.line(marginX, y, pageWidth-marginX, y); y += 5;
+  doc.setFontSize(9);
+  const remaining = s.total_price_fcfa - (s.amount_paid_fcfa||0);
+  const rows = [
+    ['Prix total', pdfFcfa(s.total_price_fcfa)],
+    ['Montant payé', pdfFcfa(s.amount_paid_fcfa||0)],
+    ['Reste à payer', pdfFcfa(remaining)],
+  ];
+  rows.forEach(([label,val])=>{
+    doc.setFont(undefined,'normal'); doc.text(label, marginX, y);
+    doc.setFont(undefined,'bold'); doc.text(val, pageWidth-marginX, y, {align:'right'});
+    y += 5;
+  });
+
+  // Mode(s) de paiement utilisé(s)
+  doc.setFont(undefined,'normal'); doc.setFontSize(8);
+  const methods = s.payment_method ? [s.payment_method] : [...new Set(salePayments.map(p=>p.payment_method).filter(Boolean))];
+  if(methods.length){
+    doc.text('Mode de paiement : '+methods.map(m=>PAYMENT_METHOD_LABELS[m]||m).join(', '), marginX, y); y += 5;
+  }
+
+  // Échéance mise en évidence (encadrée) si vente non soldée
+  if(s.due_date && s.status !== 'payee'){
+    y += 1;
+    doc.setDrawColor(193,68,60); doc.setLineWidth(0.4);
+    doc.rect(marginX, y, contentWidth, 8);
+    doc.setFont(undefined,'bold'); doc.setFontSize(9); doc.setTextColor(193,68,60);
+    doc.text('ÉCHÉANCE : '+s.due_date, pageWidth/2, y+5.5, {align:'center'});
+    doc.setTextColor(0,0,0);
+    y += 12;
+  }
+
+  // Signature / cachet
+  y += 4;
+  doc.setFontSize(8); doc.setFont(undefined,'normal');
+  doc.text('Signature', marginX, y);
+  doc.text('Cachet', pageWidth-marginX, y, {align:'right'});
+  y += 1;
+  doc.setLineWidth(0.2);
+  doc.line(marginX, y+10, marginX+28, y+10);
+  doc.line(pageWidth-marginX-28, y+10, pageWidth-marginX, y+10);
+  y += 16;
+
+  // Pied de page structuré — mentions légales
+  doc.line(marginX, y, pageWidth-marginX, y); y += 5;
+  doc.setFontSize(7); doc.setFont(undefined,'normal');
+  const footerLines = [COMPANY_ADDRESS, COMPANY_PHONE ? 'Tél : '+COMPANY_PHONE : '', COMPANY_RCCM ? 'RCCM : '+COMPANY_RCCM : '', COMPANY_IFU ? 'IFU : '+COMPANY_IFU : '', COMPANY_VAT_MENTION].filter(Boolean);
+  footerLines.forEach(line=>{ doc.text(line, pageWidth/2, y, {align:'center'}); y += 3.3; });
+  y += 3;
+  doc.setFontSize(7.5);
+  doc.text('Merci de votre confiance.', pageWidth/2, y, {align:'center'}); y += 4;
+  doc.text('Généré depuis Agro-Pastorale', pageWidth/2, y, {align:'center'});
+
+  doc.save(`recu-${(client.name||'client').replace(/\s+/g,'-')}-${s.sale_date}.pdf`);
+}
+
+function relanceWhatsApp(s, client, remaining){
+  const phone = (client.phone||'').replace(/[^0-9+]/g,'');
+  const msg = `Bonjour ${client.name}, un rappel amical : il reste ${Number(remaining).toLocaleString('fr-FR')} FCFA à régler sur votre achat du ${s.sale_date}. Merci !`;
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+
+function openPaymentForm(saleId){
+  openModal(`
+    <div class="modal-header"><h3>Nouveau paiement</h3><button onclick="closeModal()">✕</button></div>
+    <form id="payForm">
+      <label>Montant (FCFA)</label><input type="number" id="p_amount" required>
+      <label style="margin-top:8px;">Date</label><input type="date" id="p_date" value="${new Date().toISOString().slice(0,10)}">
+      <label style="margin-top:8px;">Mode de paiement</label>
+      <select id="p_method">
+        ${Object.entries(PAYMENT_METHOD_LABELS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+      </select>
+      <button type="submit" class="btn block" style="margin-top:14px;">Enregistrer</button>
+    </form>
+  `);
+  document.getElementById('payForm').addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const amount = Number(document.getElementById('p_amount').value);
+    await saveRecord('sale_payments', {
+      sale_id: saleId,
+      amount_fcfa: amount,
+      paid_at: document.getElementById('p_date').value,
+      payment_method: document.getElementById('p_method').value,
+    }, true);
+    // Affichage local immédiat ; le trigger côté base recalcule le statut exact à la synchro
+    // (évite qu'un paiement enregistré par un collègue au même moment ne soit écrasé)
+    const sales = await idbAll('sales');
+    const s = sales.find(x=>x.id===saleId);
+    if(s){
+      s.amount_paid_fcfa = Number(s.amount_paid_fcfa||0) + amount;
+      s.status = s.amount_paid_fcfa >= s.total_price_fcfa ? 'payee' : (s.amount_paid_fcfa>0 ? 'partielle':'impayee');
+      await updateLocalOnly('sales', s);
+    }
+    closeModal();
+    renderAll();
+  });
+}
+
+/* =========================================================
+   DÉPENSES (liste globale)
+   ========================================================= */
+async function renderExpensesList(){
+  const expenses = await idbAll('animal_expenses');
+  const animals = await idbAll('animals');
+  const animalMap = Object.fromEntries(animals.map(a=>[a.id,a]));
+  const box = document.getElementById('expensesList');
+  if(expenses.length===0){ box.innerHTML = '<div class="empty">Aucune dépense. Touche + pour en ajouter une.</div>'; return; }
+  expenses.sort((a,b)=>(b.expense_date||'').localeCompare(a.expense_date||''));
+  box.innerHTML = expenses.map(x=>{
+    const a = animalMap[x.animal_id];
+    return `<div class="list-item">
+      <div><div>${a?(a.name||a.lot_label||a.tag_number):'—'} · ${x.category}</div><div class="meta">${x.expense_date}</div></div>
+      <div>${Number(x.amount_fcfa).toLocaleString('fr-FR')} F</div>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   TABLEAU DE BORD
+   ========================================================= */
+async function renderDashboard(){
+  const outboxPending = await outboxAll();
+  const syncBox = document.getElementById('syncIssueBox');
+  if(syncBox){
+    if(outboxPending.length === 0){
+      syncBox.innerHTML = '';
+    } else {
+      const errDetail = lastSyncError ? `<div class="small-muted" style="margin-top:4px;">Dernière erreur (${lastSyncError.table}) : ${lastSyncError.message}</div>` : '';
+      syncBox.innerHTML = `<div class="alert amber" style="margin-bottom:12px;">
+        ⏳ ${outboxPending.length} élément(s) pas encore synchronisé(s) avec le serveur.
+        ${!navigator.onLine ? ' Tu es hors ligne — ça se fera automatiquement au retour du réseau.' : ' Nouvelle tentative en cours...'}
+        ${errDetail}
+      </div>`;
+    }
+  }
+
+  const sales = await idbAll('sales');
+  const animals = await idbAll('animals');
+  const species = await idbAll('species');
+  const weighingsCache = await idbAll('weighings');
+  const plots = await idbAll('plots');
+  const harvests = await idbAll('harvests');
+  const speciesMap = Object.fromEntries(species.map(s=>[s.id,s]));
+
+  const totalCA = sales.reduce((s,x)=>s+Number(x.total_price_fcfa),0);
+  const totalCreances = sales.reduce((s,x)=>s+(Number(x.total_price_fcfa)-Number(x.amount_paid_fcfa||0)),0);
+  const tresorerie = totalCA - totalCreances;
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi"><div class="val">${fmtMoney(totalCA)}</div><div class="label">Chiffre d'affaires</div></div>
+    <div class="kpi ${totalCreances>0?'warn':''}"><div class="val">${fmtMoney(totalCreances)}</div><div class="label">Créances impayées</div></div>
+    <div class="kpi"><div class="val">${fmtMoney(tresorerie)}</div><div class="label">Trésorerie réelle</div></div>
+    <div class="kpi"><div class="val">${animals.filter(a=>a.status==='actif').length}</div><div class="label">Animaux actifs</div></div>
+    <div class="kpi"><div class="val">${plots.filter(p=>p.status==='active').reduce((s,p)=>s+Number(p.area_ha||0),0).toLocaleString('fr-FR')} ha</div><div class="label">Surface active</div></div>
+    <div class="kpi"><div class="val">${harvests.length}</div><div class="label">Récoltes enregistrées</div></div>
+  `;
+
+  const alerts = [];
+  sales.filter(s=>s.status!=='payee' && s.due_date).forEach(s=>{
+    const late = daysLate(s.due_date);
+    if(late > 30) alerts.push({level:'red', text:`Créance de ${(s.total_price_fcfa-s.amount_paid_fcfa).toLocaleString('fr-FR')} F en retard de ${late} jours`});
+    else if(late >= 0) alerts.push({level:'amber', text:`Échéance atteinte pour une créance de ${(s.total_price_fcfa-s.amount_paid_fcfa).toLocaleString('fr-FR')} F`});
+  });
+
+  const healthEvents = await idbAll('health_events');
+  const animalMap2 = Object.fromEntries(animals.map(a=>[a.id,a]));
+  healthEvents.filter(h=>h.next_due_date).forEach(h=>{
+    const late = daysLate(h.next_due_date);
+    if(late >= 0){
+      const a = animalMap2[h.animal_id];
+      const name = a ? (a.name||a.lot_label||a.tag_number) : 'Animal';
+      alerts.push({level:'amber', text:`${HEALTH_EVENT_LABELS[h.event_type]||h.event_type} à refaire pour ${name}`});
+    }
+  });
+
+  animals.filter(a=>a.status==='actif' && a.target_sale_weight_kg).forEach(a=>{
+    const ws = weighingsCache.filter(w=>w.animal_id===a.id).sort((x,y)=>x.weighed_at.localeCompare(y.weighed_at));
+    const last = ws.length ? ws[ws.length-1].weight_kg : null;
+    if(last && last >= a.target_sale_weight_kg){
+      alerts.push({level:'amber', text:`${a.name||a.lot_label||a.tag_number} a atteint son poids de rentabilité (${last} kg) — prêt à la vente`});
+    }
+  });
+
+  const stockItems = await idbAll('stock_items');
+  stockItems.forEach(i=>{
+    if(i.alert_threshold != null && i.quantity_on_hand <= i.alert_threshold){
+      alerts.push({level:'red', text:`Stock bas : ${i.name} (${i.quantity_on_hand} ${i.unit||''} restant)`});
+    }
+    const expDays = daysUntil(i.expiry_date);
+    if(expDays != null && expDays <= 30){
+      alerts.push({level: expDays<0?'red':'amber', text:`${i.name} — péremption ${expDays<0?'dépassée':`dans ${expDays} jour(s)`}`});
+    }
+  });
+
+  document.getElementById('alertsBox').innerHTML = alerts.length
+    ? alerts.map(a=>`<div class="alert ${a.level==='amber'?'amber':''}">${a.text}</div>`).join('')
+    : '<div class="small-muted">Aucune alerte pour le moment.</div>';
+  notifyUrgentAlerts(alerts);
+  updateNotifBtn();
+
+  const counts = {};
+  animals.filter(a=>a.status==='actif').forEach(a=>{
+    const label = speciesMap[a.species_id]?.label || 'Autre';
+    counts[label] = (counts[label]||0)+1;
+  });
+  const countsBox = document.getElementById('speciesCounts');
+  const entries = Object.entries(counts);
+  countsBox.innerHTML = entries.length
+    ? entries.map(([label,n])=>`<div class="list-item"><div>${label}</div><div>${n}</div></div>`).join('')
+    : '<div class="small-muted">Aucun animal actif enregistré.</div>';
+}
+
+/* =========================================================
+   RENDU GLOBAL
+   ========================================================= */
+async function renderAll(){
+  await renderSpeciesFilter();
+  await renderAnimalList();
+  await renderPlotsList();
+  await renderStockList();
+  await renderClientsList();
+  await renderSalesList();
+  await renderExpensesList();
+  await renderDashboard();
+  updateStatusPill();
+}
+
+/* =========================================================
+   DÉMARRAGE
+   ========================================================= */
+(async function init(){
+  await ensureSpeciesSeed();
+  await normalizeLocalSpeciesIds();
+
+  if(supa){
+    supa.auth.onAuthStateChange((_event, session)=>{ handleAuthState(session); });
+    const {data:{session}} = await supa.auth.getSession();
+    await handleAuthState(session);
+  } else {
+    // Pas de Supabase configuré : mode local uniquement, pas d'écran de connexion
+    await renderAll();
+  }
+
+  document.getElementById('fabAdd').style.display = 'none';
+
+  const params = new URLSearchParams(location.search);
+  const deepLinkAnimal = params.get('animal');
+  if(deepLinkAnimal){
+    document.querySelector('nav.tabs > button[data-tab="animals"]').click();
+    openAnimalDetail(deepLinkAnimal);
+  }
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  }
+})();
+
+/* =========================================================
+   INSTALLATION DE L'APP — bannière visible avec bouton "Installer"
+   (les navigateurs modernes ne proposent plus de pop-up automatique,
+   juste une petite icône discrète dans la barre d'adresse — on préfère
+   un vrai bouton visible dans l'app)
+   ========================================================= */
+let deferredInstallPrompt = null;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!isStandalone) document.getElementById('installBanner').style.display = 'flex';
+});
+
+// Sur iPhone/iPad, Safari n'a aucune API pour proposer l'installation
+// automatiquement — on affiche donc la marche à suivre manuelle à la place.
+if(isIOS && !isStandalone){
+  const banner = document.getElementById('installBanner');
+  banner.style.display = 'flex';
+  banner.querySelector('span').textContent = "📲 Sur iPhone/iPad : touche l'icône de partage (⬆️) en bas de Safari, puis \"Sur l'écran d'accueil\".";
+  banner.querySelector('button[onclick="installApp()"]').style.display = 'none';
+}
+
+
+async function installApp(){
+  if(!deferredInstallPrompt) return;
+  document.getElementById('installBanner').style.display = 'none';
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+}
+function dismissInstallBanner(){
+  document.getElementById('installBanner').style.display = 'none';
+}
+window.addEventListener('appinstalled', ()=>{
+  document.getElementById('installBanner').style.display = 'none';
+});
+
+</script>
+</body>
+</html>
